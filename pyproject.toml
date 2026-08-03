@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "knowparex"
+version = "1.0.0"
+description = "A knowledge relationship, comparison, and learning database."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Steve Lin" }]
+license = { file = "LICENSE-CODE" }
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+dependencies = []
+
+[project.scripts]
+knowparex = "knowparex.cli:main"
+knowparex-compare = "knowparex.cli:compare_main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["knowparex*"]
