@@ -2,7 +2,7 @@
 
 <p align="center">
   <img
-    src="assets/pear_logo.png"
+    src="LOGO.png"
     width="180"
     alt="KnowpareX pear logo"
   >
