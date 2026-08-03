@@ -8,14 +8,28 @@
   >
 </p>
 Why a pear?<br>
+KnowpareX comes from<br>
+Knowledge + Compare + X.<br>
 
+The name sounds like "pear",<br>
+so a pear became its mascot.<br>
 
 > **Connect. Compare. Understand.**  
 > **連結、比較、理解。**
 
 A structured knowledge database and query toolkit for Python.
 
-一個可重複使用的 Python 套件，以知識關係為核心，包含程式語言比較、高中學科資料、查詢介面與資料收集功能。
+一個可重複使用的 Python 套件，以知識關係為核心，包含程式語言比較、高中學科資料、查詢介面與資料收集功能。<br>
+Think of it as a searchable knowledge database for Python.<br>
+可以把它想成一個可搜尋的 Python 知識資料庫。
+
+## Who is this for? / 適合誰？
+
+- 🎓 Students reviewing concepts
+- 👨‍🏫 Teachers building educational tools
+- 💻 Python developers creating learning applications
+- 📚 Anyone who needs structured knowledge lookup
+
 ## Features / 特色
 Current Features:
 
@@ -27,6 +41,14 @@ Current Features:
 ✓ JSON output<br>
 ✓ High-school subjects<br>
 ✓ Programming comparisons<br>
+
+## Quick Start / 快速開始
+```python
+from knowparex import get_topic_data
+
+data = get_topic_data("有機化學", "醇")
+print(data)
+```
 ## Documentation／完整文件
 
 For complete commands, APIs, relationship functions, and registered topics, see:
@@ -35,7 +57,7 @@ For complete commands, APIs, relationship functions, and registered topics, see:
 
 [`KNOWPAREX_API_GUIDE.md`](KNOWPAREX_API_GUIDE.md)
 
-## Example FILE / 範例檔案
+## Example Applications / 範例檔案
 
 [`COMPARE TOOL`](examples/TOOL.COMPARE.py)
 [`PRACTICE TOOL`](examples/TOOL.PRACTICE.py)
@@ -43,16 +65,9 @@ For complete commands, APIs, relationship functions, and registered topics, see:
 
 ## Install / 安裝
 
-From this folder:
-
+Install from PyPI:
 ```bash
-python3 -m pip install .
-```
-
-For editable development mode:
-
-```bash
-python3 -m pip install -e .
+pip install knowparex
 ```
 
 ## Import / 匯入
