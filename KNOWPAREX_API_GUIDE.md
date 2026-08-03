@@ -28,7 +28,9 @@
 # 1. 安裝與更新
 
 ## 從 PyPI 安裝
-
+```bash
+pip install knowparex
+```
 ```bash
 python3 -m pip install knowparex
 ```
