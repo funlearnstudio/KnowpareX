@@ -1,4 +1,10 @@
-# KnowpareX
+# 🍐 KnowpareX
+
+<p align="center">
+  <img src="LOGO.png" width="180">
+</p>
+Why a pear?
+
 
 > **Connect. Compare. Understand.**  
 > **連結、比較、理解。**
