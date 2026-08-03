@@ -1,7 +1,11 @@
 # 🍐 KnowpareX
 
 <p align="center">
-  <img src="LOGO.png" width="180">
+  <img
+    src="assets/pear_logo.png"
+    width="180"
+    alt="KnowpareX pear logo"
+  >
 </p>
 Why a pear?
 
