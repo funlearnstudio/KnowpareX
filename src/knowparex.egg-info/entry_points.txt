@@ -1,3 +1,0 @@
-[console_scripts]
-knowparex = knowparex.cli:main
-knowparex-compare = knowparex.cli:compare_main

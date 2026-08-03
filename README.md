@@ -93,3 +93,25 @@ knowparex-compare
 - Third-party material keeps its original rights.
 
 原創 Python 程式碼採 MIT License；原創學科內容採 CC BY-NC-SA 4.0。第三方內容仍受原權利條款約束。
+
+## Built-in command-line tools／內建命令列工具
+
+After installation, the tools can be started from any directory. No separate example file is required.
+安裝後可在任何資料夾直接啟動，不需要另外複製範例程式。
+
+```bash
+knowparex compare
+knowparex practice
+knowparex review
+```
+
+Short standalone commands are also available:
+
+```bash
+knowparex-compare
+knowparex-practice
+knowparex-review
+```
+
+Wrong answers are saved in the current user's application-data directory, so they remain available even when the command is run from another folder.
+錯題會儲存在目前使用者的應用程式資料目錄，因此從其他資料夾執行時仍可繼續複習。

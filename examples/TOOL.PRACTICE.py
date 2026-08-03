@@ -11,7 +11,8 @@
 # ===========================================
 # import
 # ===========================================
-from knowparex import library, compare_system
+import PROGRAMMING_NOTES.compare_system as compare_system 
+from system_library import library
 import json
 import os
 # run code
