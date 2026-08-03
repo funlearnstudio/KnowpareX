@@ -7,7 +7,7 @@
     alt="KnowpareX pear logo"
   >
 </p>
-Why a pear?
+Why a pear?<br>
 
 
 > **Connect. Compare. Understand.**  
@@ -19,14 +19,14 @@ A structured knowledge database and query toolkit for Python.
 ## Features / 特色
 Current Features:
 
-✓ 66 categories
-✓ 1580 registered topics
-✓ 6565 knowledge relations
-✓ Python API
-✓ CLI
-✓ JSON output
-✓ High-school subjects
-✓ Programming comparisons
+✓ 66 categories<br>
+✓ 1580 registered topics<br>
+✓ 6565 knowledge relations<br>
+✓ Python API<br>
+✓ CLI<br>
+✓ JSON output<br>
+✓ High-school subjects<br>
+✓ Programming comparisons<br>
 ## Documentation／完整文件
 
 For complete commands, APIs, relationship functions, and registered topics, see:
@@ -147,5 +147,5 @@ knowparex-practice
 knowparex-review
 ```
 
-Wrong answers are saved in the current user's application-data directory, so they remain available even when the command is run from another folder.
+Wrong answers are saved in the current user's application-data directory, so they remain available even when the command is run from another folder.<br>
 錯題會儲存在目前使用者的應用程式資料目錄，因此從其他資料夾執行時仍可繼續複習。
