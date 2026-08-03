@@ -6,6 +6,13 @@
 A reusable Python package for knowledge relationships, programming comparisons, and school-subject learning data.
 
 一個可重複使用的 Python 套件，以知識關係為核心，包含程式語言比較、高中學科資料、查詢介面與資料收集功能。
+## Documentation／完整文件
+
+For complete commands, APIs, relationship functions, and registered topics, see:
+
+完整指令、API、關係函式與資料分類，請參考：
+
+[`KNOWPAREX_API_GUIDE.md`](KNOWPAREX_API_GUIDE.md)
 
 ## Install / 安裝
 
