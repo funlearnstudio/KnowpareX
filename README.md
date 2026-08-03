@@ -13,9 +13,20 @@ Why a pear?
 > **Connect. Compare. Understand.**  
 > **連結、比較、理解。**
 
-A reusable Python package for knowledge relationships, programming comparisons, and school-subject learning data.
+A structured knowledge database and query toolkit for Python.
 
 一個可重複使用的 Python 套件，以知識關係為核心，包含程式語言比較、高中學科資料、查詢介面與資料收集功能。
+## Features / 特色
+Current Features:
+
+✓ 66 categories
+✓ 1580 registered topics
+✓ 6565 knowledge relations
+✓ Python API
+✓ CLI
+✓ JSON output
+✓ High-school subjects
+✓ Programming comparisons
 ## Documentation／完整文件
 
 For complete commands, APIs, relationship functions, and registered topics, see:
@@ -23,6 +34,12 @@ For complete commands, APIs, relationship functions, and registered topics, see:
 完整指令、API、關係函式與資料分類，請參考：
 
 [`KNOWPAREX_API_GUIDE.md`](KNOWPAREX_API_GUIDE.md)
+
+## Example FILE / 範例檔案
+
+[`COMPARE TOOL`](examples/TOOL.COMPARE.py)
+[`PRACTICE TOOL`](examples/TOOL.PRACTICE.py)
+[`REVIEW TOOL`](examples/TOOL.REVIEW.py)
 
 ## Install / 安裝
 
