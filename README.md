@@ -19,9 +19,9 @@ A structured knowledge database and query toolkit for Python.
 ## Features / 特色
 Current Features:
 
-✓ 66 categories<br>
-✓ 1580 registered topics<br>
-✓ 6565 knowledge relations<br>
+✓ **66** categories<br>
+✓ **1580** registered topics<br>
+✓ **6565** knowledge relations<br>
 ✓ Python API<br>
 ✓ CLI<br>
 ✓ JSON output<br>
