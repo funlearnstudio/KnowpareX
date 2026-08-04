@@ -167,7 +167,18 @@ knowparex compare
 ```bash
 knowparex-compare
 ```
+## 文字概念掃描
 
+KnowpareX 提供 `scan` 命令，可以從一段文字中找出已收錄於知識庫的概念。
+
+這個功能不會回答問題，也不會自動解釋整段文字；它會將輸入內容與 KnowpareX 資料庫中的分類、主題及知識欄位進行比對，並列出命中的概念。
+
+### 互動式掃描
+
+直接執行：
+
+```bash
+knowparex scan
 ## 練習／測驗
 
 ```bash
