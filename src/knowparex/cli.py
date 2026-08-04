@@ -771,201 +771,264 @@ def _normalize_scan_text(value: object) -> str:
 
     return str(value).strip()
 
+
 SCAN_IGNORED_CONCEPTS = {
-    # ===== 常見敘述 =====
-    "已知", "未知", "若", "如果", "假設", "設", "令",
-    "請", "請問", "求", "求出", "試求", "試",
-
-    # ===== 動作 =====
-    "產生", "形成", "進行", "利用", "使用",
-    "表示", "代表", "判斷", "比較", "分析",
-    "增加", "減少", "降低", "提高",
-    "轉換", "轉變", "改變", "影響",
-
-    # ===== 結果 =====
-    "答案", "結果", "解答", "結論",
-
-    # ===== 關係 =====
-    "關係", "作用", "功能", "用途",
-    "原因", "目的", "特徵", "性質",
-    "方法", "步驟", "流程", "過程",
-    "原理", "定義", "分類",
-
-    # ===== 時間 =====
-    "之前", "之後", "以前", "以後",
-    "開始", "結束", "最後", "首先",
-
-    # ===== 程度 =====
-    "主要", "一般", "通常", "常見",
-    "可能", "容易", "可以", "即可",
-    "必須", "一定", "全部", "部分",
-
-    # ===== 比較 =====
-    "最大", "最小", "較大", "較小",
-    "較高", "較低", "更多", "更少",
-
-    # ===== 空間 =====
-    "上方", "下方", "左邊", "右邊",
-    "中央", "附近", "內部", "外部",
-
-    # ===== 學校題目超常出現 =====
-    "圖中", "下列", "上列", "上述",
-    "下圖", "上圖", "右圖", "左圖",
-    "例如", "其中", "如下", "如圖",
-
-    # ===== 題目描述 =====
-    "活動", "現象", "情形",
-    "環境", "條件", "狀況",
-    "內容", "資料", "資訊",
-    "單位", "數值",
-
-    # ===== 判斷 =====
-    "正確", "錯誤",
-    "符合", "不符合",
-    "是否", "不是", "屬於",
-
-    # ===== 其他 =====
-    "因此", "所以", "因為",
-    "而且", "以及", "並且",
-    "同時", "另外", "其中",
+    "已知",
+    "未知",
+    "判斷",
+    "說明",
+    "敘述",
+    "問題",
+    "結果",
+    "答案",
+    "原因",
+    "表示",
+    "比較",
+    "次數",
+    "之後",
+    "之前",
+    "產生",
+    "形成",
+    "進行",
+    "發生",
+    "活動",
+    "環境",
+    "影響",
+    "增加",
+    "減少",
+    "降低",
+    "提高",
+    "主要",
+    "一般",
+    "通常",
+    "可能",
+    "容易",
+    "可以",
+    "利用",
+    "使用",
+    "根據",
+    "依照",
+    "下列",
+    "上述",
+    "其中",
+    "因此",
+    "所以",
+    "因為",
+    "而且",
+    "以及",
+    "並且",
+    "同時",
+    "另外",
+    "正確",
+    "錯誤",
+    "是否",
+    "屬於",
+    "請問",
+    "求出",
+    "合理",
+    "較高",
+    "較低",
 }
 
-def _collect_scan_candidates(
-    records: Iterable[dict],
-    *,
-    minimum_length: int = 2,
-) -> set[str]:
-    """從知識紀錄中收集適合 scan 的概念。"""
-    fields = (
-        "topic",
-        "code_a",
-        "code_b",
-    )
 
-    candidates: set[str] = set()
+SCAN_PREFIXES = (
+    "進行",
+    "利用",
+    "透過",
+    "藉由",
+    "經由",
+    "使用",
+    "採用",
+    "具有",
+    "屬於",
+    "可以",
+    "可能",
+    "容易",
+    "主要",
+    "可",
+)
 
-    for record in records:
-        for field in fields:
-            concept = _normalize_scan_text(record.get(field))
 
-            if len(concept) < minimum_length:
+SCAN_SUFFIXES = (
+    "增加",
+    "減少",
+    "降低",
+    "提高",
+    "形成",
+    "產生",
+    "發生",
+    "改變",
+)
+
+
+def _normalize_scan_concept(concept: str) -> str:
+    """將候選概念正規化，避免把整句當作概念。"""
+    concept = concept.strip()
+
+    changed = True
+
+    while changed:
+        changed = False
+
+        for prefix in sorted(
+            SCAN_PREFIXES,
+            key=len,
+            reverse=True,
+        ):
+            if (
+                concept.startswith(prefix)
+                and len(concept) > len(prefix) + 1
+            ):
+                concept = concept[len(prefix):].strip()
+                changed = True
+                break
+
+        for suffix in sorted(
+            SCAN_SUFFIXES,
+            key=len,
+            reverse=True,
+        ):
+            if (
+                concept.endswith(suffix)
+                and len(concept) > len(suffix) + 1
+            ):
+                concept = concept[:-len(suffix)].strip()
+                changed = True
+                break
+
+    return concept
+
+
+def collect_scan_topics() -> list[dict]:
+    """整理所有主題及其可供掃描比對的關鍵詞。"""
+    scan_topics: list[dict] = []
+
+    for category in get_categories():
+        for item in get_items(category):
+            try:
+                records = get_topic_data(category, item)
+            except KeyError:
                 continue
 
-            if concept in SCAN_IGNORED_CONCEPTS:
-                continue
+            terms: set[str] = set()
 
-            candidates.add(concept)
+            normalized_item = _normalize_scan_concept(
+                _normalize_scan_text(item)
+            )
 
-    return candidates
-def _collect_scan_candidates(
-    records: Iterable[dict],
-    *,
-    minimum_length: int = 2,
-) -> set[str]:
-    """
-    從所有知識紀錄中收集可供 scan 比對的概念。
+            if normalized_item:
+                terms.add(normalized_item)
 
-    每筆 records 建議具有：
-    category、topic、code_a、language_a、code_b、language_b
-    """
-    fields = (
-        "category",
-        "topic",
-        "code_a",
-        "language_a",
-        "code_b",
-        "language_b",
-    )
+            for record in records:
+                for field in ("code_a", "code_b"):
+                    term = _normalize_scan_text(
+                        record.get(field)
+                    )
+                    term = _normalize_scan_concept(term)
 
-    candidates: set[str] = set()
+                    if not term:
+                        continue
 
-    for record in records:
-        for field in fields:
-            concept = _normalize_scan_text(record.get(field))
+                    terms.add(term)
 
-            if len(concept) < minimum_length:
-                continue
+            scan_topics.append(
+                {
+                    "category": category,
+                    "item": item,
+                    "terms": terms,
+                }
+            )
 
-            candidates.add(concept)
-
-    return candidates
-
-
-def _remove_nested_scan_matches(matches: list[str]) -> list[str]:
-    """
-    移除被較長概念完整包含的短概念。
-
-    例如同時命中：
-    - 水
-    - 熱水
-    - 冰水
-
-    預設只保留：
-    - 熱水
-    - 冰水
-    """
-    kept: list[str] = []
-
-    for concept in sorted(matches, key=lambda item: (-len(item), item)):
-        if any(concept in longer for longer in kept):
-            continue
-
-        kept.append(concept)
-
-    return kept
-
-
-def scan_text_for_concepts(
+    return scan_topics
+def scan_text_for_topics(
     text: str,
-    records: Iterable[dict],
+    scan_topics: list[dict],
     *,
     minimum_length: int = 2,
-    show_all: bool = False,
-) -> list[str]:
-    """掃描文字並回傳所有命中的概念。"""
-    text = text.strip()
+) -> list[dict]:
+    """掃描文字並回傳命中的知識主題。"""
+    original_text = text.strip()
+    normalized_text = original_text.casefold()
 
-    if not text:
+    if not normalized_text:
         return []
 
-    candidates = _collect_scan_candidates(
-        records,
-        minimum_length=minimum_length,
+    matched_topics: list[dict] = []
+
+    for topic in scan_topics:
+        matched_terms: list[str] = []
+
+        for raw_term in topic["terms"]:
+            term = _normalize_scan_concept(
+                _normalize_scan_text(raw_term)
+            )
+
+            if len(term) < minimum_length:
+                continue
+
+            if term in SCAN_IGNORED_CONCEPTS:
+                continue
+
+            if term.casefold() in normalized_text:
+                matched_terms.append(term)
+
+        if not matched_terms:
+            continue
+
+        unique_terms = sorted(
+            set(matched_terms),
+            key=lambda value: (
+                -len(value),
+                value,
+            ),
+        )
+
+        matched_topics.append(
+            {
+                "category": topic["category"],
+                "item": topic["item"],
+                "matched_terms": unique_terms,
+                "score": sum(
+                    len(term)
+                    for term in unique_terms
+                ),
+            }
+        )
+
+    matched_topics.sort(
+        key=lambda topic: (
+            -topic["score"],
+            -len(topic["matched_terms"]),
+            topic["category"],
+            topic["item"],
+        )
     )
 
-    matches = [
-        concept
-        for concept in candidates
-        if concept in text
-    ]
+    return matched_topics
 
-    if not show_all:
-        matches = _remove_nested_scan_matches(matches)
-
-    return sorted(
-        set(matches),
-        key=lambda concept: (
-            text.find(concept),
-            -len(concept),
-            concept,
-        ),
-    )
-
-
-def print_scan_result(
+def print_scan_topic_result(
     text: str,
-    concepts: list[str],
+    matched_topics: list[dict],
     *,
     as_json: bool = False,
 ) -> None:
-    """輸出 scan 結果。"""
+    """顯示文字掃描命中的主題。"""
     if as_json:
         print(
             json.dumps(
                 {
                     "text": text,
-                    "concept_count": len(concepts),
-                    "concepts": concepts,
+                    "topic_count": len(matched_topics),
+                    "topics": [
+                        {
+                            "category": topic["category"],
+                            "item": topic["item"],
+                            "matched_terms": (
+                                topic["matched_terms"]
+                            ),
+                        }
+                        for topic in matched_topics
+                    ],
                 },
                 ensure_ascii=False,
                 indent=2,
@@ -973,34 +1036,46 @@ def print_scan_result(
         )
         return
 
-    if not concepts:
-        print(f'在文字中找不到已收錄的知識概念：\n{text}')
-        return
-
     print()
     print("=" * 55)
-    print("文字概念掃描")
+    print("文字主題掃描")
     print("=" * 55)
     print(f"輸入文字：{text}")
     print()
 
-    print("【命中的概念】")
+    if not matched_topics:
+        print("找不到與這段文字相關的知識主題。")
+        print("=" * 55)
+        return
 
-    for index, concept in enumerate(concepts, start=1):
-        print(f"{index}. {concept}")
+    print("【命中的主題】")
+
+    for index, topic in enumerate(
+        matched_topics,
+        start=1,
+    ):
+        matched_preview = "、".join(
+            topic["matched_terms"][:4]
+        )
+
+        print(
+            f"{index}. "
+            f'{topic["category"]} / {topic["item"]}'
+        )
+
+        if matched_preview:
+            print(f"   命中內容：{matched_preview}")
 
     print()
-    print(f"概念數量：{len(concepts)}")
+    print(f"主題數量：{len(matched_topics)}")
     print("=" * 55)
-
 
 def interactive_scan_main(
     *,
     minimum_length: int = 2,
-    show_all: bool = False,
 ) -> None:
-    """重複掃描文字，並允許使用者查詢命中的概念。"""
-    records = collect_all_records()
+    """重複掃描文字，並允許直接開啟命中的主題。"""
+    scan_topics = collect_scan_topics()
 
     exit_commands = {
         "0",
@@ -1014,9 +1089,9 @@ def interactive_scan_main(
 
     print()
     print("=" * 55)
-    print("KnowpareX 互動式概念掃描")
+    print("KnowpareX 互動式主題掃描")
     print("=" * 55)
-    print("輸入一段文字，系統會列出其中命中的知識概念。")
+    print("輸入一段文字，系統會找出相關知識主題。")
     print("輸入 0、q、quit、exit、結束或離開即可停止。")
     print("=" * 55)
 
@@ -1026,95 +1101,95 @@ def interactive_scan_main(
                 "\n請輸入要掃描的文字（輸入 0 結束）："
             ).strip()
         except (EOFError, KeyboardInterrupt):
-            print("\n已結束概念掃描。")
+            print("\n已結束主題掃描。")
             return
 
         if text.casefold() in exit_commands:
-            print("已結束概念掃描。")
+            print("已結束主題掃描。")
             return
 
         if not text:
             print("請輸入文字，不可以空白。")
             continue
 
-        concepts = scan_text_for_concepts(
+        matched_topics = scan_text_for_topics(
             text,
-            records,
+            scan_topics,
             minimum_length=minimum_length,
-            show_all=show_all,
         )
 
-        print_scan_result(
+        print_scan_topic_result(
             text,
-            concepts,
+            matched_topics,
             as_json=False,
         )
 
-        if not concepts:
+        if not matched_topics:
             continue
 
         while True:
             choice = input(
-                "\n要查詢其中的概念嗎？\n"
-                "輸入編號、all 查全部，或按 Enter 跳過："
+                "\n要開啟其中的主題嗎？\n"
+                "輸入編號，或按 Enter 繼續掃描："
             ).strip()
 
             if choice == "":
                 break
 
             if choice.casefold() in exit_commands:
-                print("已結束概念掃描。")
+                print("已結束主題掃描。")
                 return
-
-            if choice.casefold() == "all":
-                for concept in concepts:
-                    print()
-                    search_main(
-                        concept,
-                        summary_only=True,
-                    )
-                break
 
             try:
                 selected_index = int(choice)
             except ValueError:
-                print("請輸入有效編號、all，或直接按 Enter。")
+                print("請輸入有效編號，或直接按 Enter。")
                 continue
 
-            if not 1 <= selected_index <= len(concepts):
+            if not 1 <= selected_index <= len(
+                matched_topics
+            ):
                 print("編號超出範圍。")
                 continue
 
-            selected_concept = concepts[selected_index - 1]
+            selected_topic = matched_topics[
+                selected_index - 1
+            ]
 
-            search_main(
-                selected_concept,
-                open_topic=True,
+            print_topic_text(
+                selected_topic["category"],
+                selected_topic["item"],
             )
 
             again = input(
-                "\n還要查其他命中的概念嗎？\n"
+                "\n還要開啟其他命中的主題嗎？\n"
                 "輸入 y 繼續，其他內容返回掃描："
             ).strip().casefold()
 
             if again in {"y", "yes", "是", "要"}:
-                print("\n【命中的概念】")
-                for index, concept in enumerate(
-                    concepts,
+                print("\n【命中的主題】")
+
+                for index, topic in enumerate(
+                    matched_topics,
                     start=1,
                 ):
-                    print(f"{index}. {concept}")
+                    print(
+                        f"{index}. "
+                        f'{topic["category"]} / '
+                        f'{topic["item"]}'
+                    )
+
                 continue
 
             break
+
 def scan_main(
     text: str | None,
     *,
     minimum_length: int = 2,
-    show_all: bool = False,
     json_output: bool = False,
 ) -> None:
-    """執行單次掃描，或在未提供文字時進入互動模式。"""
+    """執行單次主題掃描，或進入互動模式。"""
     if minimum_length < 1:
         print("--min-length 必須大於 0。")
         return
@@ -1126,24 +1201,24 @@ def scan_main(
 
         interactive_scan_main(
             minimum_length=minimum_length,
-            show_all=show_all,
         )
         return
 
-    records = collect_all_records()
+    scan_topics = collect_scan_topics()
 
-    concepts = scan_text_for_concepts(
+    matched_topics = scan_text_for_topics(
         text,
-        records,
+        scan_topics,
         minimum_length=minimum_length,
-        show_all=show_all,
     )
 
-    print_scan_result(
+    print_scan_topic_result(
         text,
-        concepts,
+        matched_topics,
         as_json=json_output,
     )
+
+
 def record_to_sentence(record: dict) -> str:
     """將一筆關係資料轉成自然語句。"""
     relation = str(record.get("relation", "")).strip()
@@ -1700,13 +1775,6 @@ def main() -> None:
     )
 
     scan_parser.add_argument(
-        "--all",
-        action="store_true",
-        dest="show_all",
-        help="保留被較長概念包含的短概念",
-    )
-
-    scan_parser.add_argument(
         "--json",
         action="store_true",
         help="以 JSON 格式輸出",
@@ -1787,7 +1855,6 @@ def main() -> None:
             scan_main(
                 args.text,
                 minimum_length=args.min_length,
-                show_all=args.show_all,
                 json_output=args.json,
             )
         elif args.command == "search":
