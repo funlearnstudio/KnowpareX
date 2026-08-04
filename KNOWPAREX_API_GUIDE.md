@@ -24,28 +24,91 @@
 14. [目前全部分類與項目](#14-目前全部分類與項目)
 
 ---
-
 # 1. 安裝與更新
 
 ## 從 PyPI 安裝
-```bash
-pip install knowparex
+
+### Windows
+
+建議使用：
+
+```powershell
+py -m pip install knowparex
 ```
+
+如果電腦無法使用 `py`，可以改用：
+
+```powershell
+python -m pip install knowparex
+```
+
+### macOS / Linux
+
 ```bash
 python3 -m pip install knowparex
 ```
 
+---
+
 ## 更新到最新版
+
+### Windows
+
+```powershell
+py -m pip install --upgrade knowparex
+```
+
+或：
+
+```powershell
+python -m pip install --upgrade knowparex
+```
+
+### macOS / Linux
 
 ```bash
 python3 -m pip install --upgrade knowparex
 ```
 
+---
+
 ## 查看目前版本
+
+### Windows
+
+```powershell
+py -m pip show knowparex
+```
+
+或：
+
+```powershell
+python -m pip show knowparex
+```
+
+### macOS / Linux
 
 ```bash
 python3 -m pip show knowparex
 ```
+
+---
+
+## 確認安裝成功
+
+```bash
+knowparex categories
+```
+
+如果成功，終端機會顯示所有可用分類。
+
+如果 Windows 出現：
+
+```text
+'knowparex' is not recognized as an internal or external command
+```
+
+請先關閉並重新開啟 PowerShell 或命令提示字元。若仍無法執行，請確認 Python 的 `Scripts` 資料夾已加入 `PATH`。<br>
 
 Python 中查看：
 
@@ -54,15 +117,6 @@ import knowparex
 
 print(knowparex.__version__)
 ```
-
-## 從本機原始碼重新安裝
-
-請在含有 `pyproject.toml` 的 KnowpareX 專案根目錄執行：
-
-```bash
-python3 -m pip install --force-reinstall .
-```
-
 ---
 
 # 2. 最短使用範例

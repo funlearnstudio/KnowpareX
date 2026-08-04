@@ -65,10 +65,71 @@ For complete commands, APIs, relationship functions, and registered topics, see:
 
 ## Install / 安裝
 
-Install from PyPI:
-```bash
-pip install knowparex
+### Windows
+
+Install using Python:
+
+```powershell
+py -m pip install knowparex
 ```
+
+or
+
+```powershell
+python -m pip install knowparex
+```
+
+### macOS / Linux
+
+```bash
+python3 -m pip install knowparex
+```
+
+For editable development mode:
+
+```bash
+python3 -m pip install -e .
+```
+
+---
+
+### Verify installation / 確認安裝
+
+```bash
+knowparex categories
+```
+
+If the installation is successful, you should see all available categories.
+
+如果安裝成功，會顯示所有分類。
+
+---
+
+### Windows troubleshooting / Windows 常見問題
+
+If you see:
+
+```text
+'knowparex' is not recognized as an internal or external command
+```
+
+try:
+
+- Restart Command Prompt or PowerShell.
+- Make sure Python is installed correctly.
+- Ensure Python's **Scripts** directory is added to your `PATH`.
+
+如果出現：
+
+```text
+'knowparex' 不是內部或外部命令，也不是可執行的程式或批次檔。
+```
+
+請嘗試：
+
+- 重新開啟 PowerShell 或命令提示字元。
+- 確認 Python 已安裝。
+- 確認 Python 的 **Scripts** 資料夾已加入 `PATH`。
 
 ## Import / 匯入
 
