@@ -21,8 +21,9 @@ Under these terms:
 - ShareAlike — Distribute adaptations under the same license.
 
 Official license:
-https://creativecommons.org/licenses/by-nc-sa/4.0/
+https://creativecommons.org/licenses/by-nc-sa/4.0/<br>
 
+The Python source code and the educational content are licensed separately. The MIT License applies only to the original source code, while the educational database content is licensed under CC BY-NC-SA 4.0.
 ---
 
 除非另有說明，本專案中的原創學科筆記與資料庫內容採用：
@@ -42,4 +43,5 @@ https://creativecommons.org/licenses/by-nc-sa/4.0/
 - 相同方式分享：修改後必須採用相同授權。
 
 本授權只適用於作者有權授權的原創內容。第三方課文、圖片、
-引用文字及其他素材仍受原始著作權或授權條款約束。
+引用文字及其他素材仍受原始著作權或授權條款約束。<br>
+Python 原始程式碼與教育資料採不同授權。MIT License 僅適用於原創程式碼；知識資料庫內容則採 CC BY-NC-SA 4.0。
