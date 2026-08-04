@@ -744,6 +744,321 @@ def today_main() -> None:
     print(f"今日知識推薦：{today.isoformat()}")
     print("=" * 55)
     print_topic_text(category, item)
+from typing import Iterable
+
+def collect_all_records() -> list[dict]:
+    """收集資料庫中的所有知識紀錄，並補上分類與主題名稱。"""
+    all_records: list[dict] = []
+
+    for category in get_categories():
+        for item in get_items(category):
+            try:
+                records = get_topic_data(category, item)
+            except KeyError:
+                continue
+
+            for record in records:
+                scan_record = dict(record)
+                scan_record["category"] = category
+                scan_record["topic"] = item
+                all_records.append(scan_record)
+
+    return all_records
+def _normalize_scan_text(value: object) -> str:
+    """將值轉成適合比對的文字。"""
+    if value is None:
+        return ""
+
+    return str(value).strip()
+
+
+def _collect_scan_candidates(
+    records: Iterable[dict],
+    *,
+    minimum_length: int = 2,
+) -> set[str]:
+    """
+    從所有知識紀錄中收集可供 scan 比對的概念。
+
+    每筆 records 建議具有：
+    category、topic、code_a、language_a、code_b、language_b
+    """
+    fields = (
+        "category",
+        "topic",
+        "code_a",
+        "language_a",
+        "code_b",
+        "language_b",
+    )
+
+    candidates: set[str] = set()
+
+    for record in records:
+        for field in fields:
+            concept = _normalize_scan_text(record.get(field))
+
+            if len(concept) < minimum_length:
+                continue
+
+            candidates.add(concept)
+
+    return candidates
+
+
+def _remove_nested_scan_matches(matches: list[str]) -> list[str]:
+    """
+    移除被較長概念完整包含的短概念。
+
+    例如同時命中：
+    - 水
+    - 熱水
+    - 冰水
+
+    預設只保留：
+    - 熱水
+    - 冰水
+    """
+    kept: list[str] = []
+
+    for concept in sorted(matches, key=lambda item: (-len(item), item)):
+        if any(concept in longer for longer in kept):
+            continue
+
+        kept.append(concept)
+
+    return kept
+
+
+def scan_text_for_concepts(
+    text: str,
+    records: Iterable[dict],
+    *,
+    minimum_length: int = 2,
+    show_all: bool = False,
+) -> list[str]:
+    """掃描文字並回傳所有命中的概念。"""
+    text = text.strip()
+
+    if not text:
+        return []
+
+    candidates = _collect_scan_candidates(
+        records,
+        minimum_length=minimum_length,
+    )
+
+    matches = [
+        concept
+        for concept in candidates
+        if concept in text
+    ]
+
+    if not show_all:
+        matches = _remove_nested_scan_matches(matches)
+
+    return sorted(
+        set(matches),
+        key=lambda concept: (
+            text.find(concept),
+            -len(concept),
+            concept,
+        ),
+    )
+
+
+def print_scan_result(
+    text: str,
+    concepts: list[str],
+    *,
+    as_json: bool = False,
+) -> None:
+    """輸出 scan 結果。"""
+    if as_json:
+        print(
+            json.dumps(
+                {
+                    "text": text,
+                    "concept_count": len(concepts),
+                    "concepts": concepts,
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return
+
+    if not concepts:
+        print(f'在文字中找不到已收錄的知識概念：\n{text}')
+        return
+
+    print()
+    print("=" * 55)
+    print("文字概念掃描")
+    print("=" * 55)
+    print(f"輸入文字：{text}")
+    print()
+
+    print("【命中的概念】")
+
+    for index, concept in enumerate(concepts, start=1):
+        print(f"{index}. {concept}")
+
+    print()
+    print(f"概念數量：{len(concepts)}")
+    print("=" * 55)
+
+
+def interactive_scan_main(
+    *,
+    minimum_length: int = 2,
+    show_all: bool = False,
+) -> None:
+    """重複掃描文字，並允許使用者查詢命中的概念。"""
+    records = collect_all_records()
+
+    exit_commands = {
+        "0",
+        "q",
+        "quit",
+        "exit",
+        "結束",
+        "離開",
+        "不要查了",
+    }
+
+    print()
+    print("=" * 55)
+    print("KnowpareX 互動式概念掃描")
+    print("=" * 55)
+    print("輸入一段文字，系統會列出其中命中的知識概念。")
+    print("輸入 0、q、quit、exit、結束或離開即可停止。")
+    print("=" * 55)
+
+    while True:
+        try:
+            text = input(
+                "\n請輸入要掃描的文字（輸入 0 結束）："
+            ).strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\n已結束概念掃描。")
+            return
+
+        if text.casefold() in exit_commands:
+            print("已結束概念掃描。")
+            return
+
+        if not text:
+            print("請輸入文字，不可以空白。")
+            continue
+
+        concepts = scan_text_for_concepts(
+            text,
+            records,
+            minimum_length=minimum_length,
+            show_all=show_all,
+        )
+
+        print_scan_result(
+            text,
+            concepts,
+            as_json=False,
+        )
+
+        if not concepts:
+            continue
+
+        while True:
+            choice = input(
+                "\n要查詢其中的概念嗎？\n"
+                "輸入編號、all 查全部，或按 Enter 跳過："
+            ).strip()
+
+            if choice == "":
+                break
+
+            if choice.casefold() in exit_commands:
+                print("已結束概念掃描。")
+                return
+
+            if choice.casefold() == "all":
+                for concept in concepts:
+                    print()
+                    search_main(
+                        concept,
+                        summary_only=True,
+                    )
+                break
+
+            try:
+                selected_index = int(choice)
+            except ValueError:
+                print("請輸入有效編號、all，或直接按 Enter。")
+                continue
+
+            if not 1 <= selected_index <= len(concepts):
+                print("編號超出範圍。")
+                continue
+
+            selected_concept = concepts[selected_index - 1]
+
+            search_main(
+                selected_concept,
+                open_topic=True,
+            )
+
+            again = input(
+                "\n還要查其他命中的概念嗎？\n"
+                "輸入 y 繼續，其他內容返回掃描："
+            ).strip().casefold()
+
+            if again in {"y", "yes", "是", "要"}:
+                print("\n【命中的概念】")
+                for index, concept in enumerate(
+                    concepts,
+                    start=1,
+                ):
+                    print(f"{index}. {concept}")
+                continue
+
+            break
+def scan_main(
+    text: str | None,
+    *,
+    minimum_length: int = 2,
+    show_all: bool = False,
+    json_output: bool = False,
+) -> None:
+    """執行單次掃描，或在未提供文字時進入互動模式。"""
+    if minimum_length < 1:
+        print("--min-length 必須大於 0。")
+        return
+
+    if text is None:
+        if json_output:
+            print("--json 必須搭配一段要掃描的文字。")
+            return
+
+        interactive_scan_main(
+            minimum_length=minimum_length,
+            show_all=show_all,
+        )
+        return
+
+    records = collect_all_records()
+
+    concepts = scan_text_for_concepts(
+        text,
+        records,
+        minimum_length=minimum_length,
+        show_all=show_all,
+    )
+
+    print_scan_result(
+        text,
+        concepts,
+        as_json=json_output,
+    )
 def record_to_sentence(record: dict) -> str:
     """將一筆關係資料轉成自然語句。"""
     relation = str(record.get("relation", "")).strip()
@@ -1281,7 +1596,36 @@ def main() -> None:
         dest="random_result",
         help="隨機顯示一筆符合的知識紀錄",
     )
+    scan_parser = subparsers.add_parser(
+        "scan",
+        help="掃描一段文字並列出其中命中的知識概念",
+    )
 
+    scan_parser.add_argument(
+        "text",
+        nargs="?",
+        help="要掃描的文字；省略時進入互動模式",
+    )
+
+    scan_parser.add_argument(
+        "--min-length",
+        type=int,
+        default=2,
+        help="概念最少字元數，預設為 2",
+    )
+
+    scan_parser.add_argument(
+        "--all",
+        action="store_true",
+        dest="show_all",
+        help="保留被較長概念包含的短概念",
+    )
+
+    scan_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="以 JSON 格式輸出",
+    )
     search_parser.add_argument(
         "--tree",
         action="store_true",
@@ -1354,6 +1698,13 @@ def main() -> None:
             
             else:
                 print_topic_text(args.category, args.item)
+        elif args.command == "scan":
+            scan_main(
+                args.text,
+                minimum_length=args.min_length,
+                show_all=args.show_all,
+                json_output=args.json,
+            )
         elif args.command == "search":
             search_main(
                 args.keyword,
