@@ -1054,6 +1054,10 @@ def _should_ignore_scan_term(
 
     if term in SCAN_IGNORED_CONCEPTS:
         return True
+    # 略過過短的全小寫英文碎片
+    # 避免 nc 命中 Function 這類子字串
+    if re.fullmatch(r"[a-z]{1,2}", term):
+        return True
 
     # 純整數、小數、正負數
     # 例如：5、-1、3.14、+8
