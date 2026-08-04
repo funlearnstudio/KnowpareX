@@ -12,7 +12,7 @@
 # ===========================================
 # import
 # ===========================================
-from system_library import library
+from knowparex import library
 # run code
 
 print("=======================================================")
