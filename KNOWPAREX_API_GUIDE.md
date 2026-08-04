@@ -150,10 +150,11 @@ knowparex categories
 knowparex items "電學"
 ```
 
-## 以 JSON 顯示主題資料
+## 顯示主題資料 / 輸出 JSON
 
 ```bash
 knowparex topic "電學" "歐姆定律"
+knowparex topic "有機化學" "醇" --json
 ```
 
 ## 查看說明
