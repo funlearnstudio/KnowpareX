@@ -4,7 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "knowparex"
+<<<<<<< HEAD
 version = "1.3.2"
+=======
+version = "1.3.1"
+>>>>>>> 46dd7f75fc7b5244ff5d5e60a42ae8ed9c457b8d
 description = "A knowledge relationship, comparison, and learning database."
 readme = "README.md"
 requires-python = ">=3.10"
