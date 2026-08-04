@@ -828,6 +828,11 @@ SCAN_IGNORED_CONCEPTS = {
     "合理",
     "較高",
     "較低",
+    "沒有",
+    "不是",
+    "不一定",
+    "不代表",
+    "介紹",
 }
 
 
@@ -899,7 +904,10 @@ def _normalize_scan_concept(concept: str) -> str:
     return concept
 
 
-def collect_scan_topics() -> list[dict]:
+def collect_scan_topics(
+    *,
+    minimum_length: int = 2,
+) -> list[dict]:
     """整理所有主題及其可供掃描比對的關鍵詞。"""
     scan_topics: list[dict] = []
 
@@ -916,7 +924,10 @@ def collect_scan_topics() -> list[dict]:
                 _normalize_scan_text(item)
             )
 
-            if normalized_item:
+            if not _should_ignore_scan_term(
+                normalized_item,
+                minimum_length=minimum_length,
+            ):
                 terms.add(normalized_item)
 
             for record in records:
@@ -926,7 +937,10 @@ def collect_scan_topics() -> list[dict]:
                     )
                     term = _normalize_scan_concept(term)
 
-                    if not term:
+                    if _should_ignore_scan_term(
+                        term,
+                        minimum_length=minimum_length,
+                    ):
                         continue
 
                     terms.add(term)
@@ -940,6 +954,201 @@ def collect_scan_topics() -> list[dict]:
             )
 
     return scan_topics
+CHINESE_NUMBER_CHARS = "零〇一二三四五六七八九十百千兩"
+
+
+def _normalize_scan_input(text: str) -> str:
+    """清除容易造成 scan 誤命中的章節、題號與版面標記。"""
+    normalized = text.strip()
+
+    patterns = (
+        # 只處理每行開頭的 1-1、2－3、10—2-1 等章節編號
+        # 避免誤刪句子中真正的 5-3 算式
+        r"(?m)^\s*\d+(?:\s*[-－—]\s*\d+){1,2}\s*",
+
+        # 每行開頭的 1.1、2.3.1 等章節編號
+        # 要求後面有空白，避免把 3.14 當章節
+        r"(?m)^\s*\d+(?:\.\d+){1,2}(?=\s)\s*",
+
+        # 第2章、第二章、第 3 節、第十二單元
+        r"第\s*[0-9"
+        + CHINESE_NUMBER_CHARS
+        + r"]+\s*(?:章|節|單元|課|課次|篇|部分)",
+
+        # 第2章第3節這種連續格式
+        r"第\s*[0-9"
+        + CHINESE_NUMBER_CHARS
+        + r"]+\s*章\s*第\s*[0-9"
+        + CHINESE_NUMBER_CHARS
+        + r"]+\s*節",
+
+        # 第二冊、上冊、下冊
+        r"第\s*[0-9"
+        + CHINESE_NUMBER_CHARS
+        + r"]+\s*冊",
+
+        # 第1題、第一題、第 12 小題
+        r"第\s*[0-9"
+        + CHINESE_NUMBER_CHARS
+        + r"]+\s*(?:題|小題)",
+
+        # 題組一、題組 2
+        r"題組\s*[0-9"
+        + CHINESE_NUMBER_CHARS
+        + r"]+",
+
+        # 每行開頭的（1）、(2)、【3】、[4]
+        r"(?m)^\s*[\(\（\[\【]\s*[0-9"
+        + CHINESE_NUMBER_CHARS
+        + r"]+\s*[\)\）\]\】]\s*",
+
+        # 每行開頭的 1.、2)、3、 等題號
+        r"(?m)^\s*\d+\s*(?:[.．、\)])\s*",
+
+        # 每行開頭的一、二、三、
+        r"(?m)^\s*["
+        + CHINESE_NUMBER_CHARS
+        + r"]+\s*[、.．]\s*",
+
+        # Page 12、p. 12、第12頁
+        r"(?:Page|PAGE|page|P\.|p\.)\s*\d+",
+        r"第\s*\d+\s*頁",
+
+        # Chapter 2、Unit 3、Section 1
+        r"\b(?:Chapter|Unit|Section|Lesson)\s+\d+\b",
+
+        # 常見獨立版面標記
+        r"(?m)^\s*(?:例題|範例|練習題|習題|隨堂練習|課後練習)\s*[0-9"
+        + CHINESE_NUMBER_CHARS
+        + r"]*\s*[:：]?\s*",
+    )
+
+    for pattern in patterns:
+        normalized = re.sub(
+            pattern,
+            " ",
+            normalized,
+            flags=re.IGNORECASE,
+        )
+
+    # 合併清除後產生的多餘空白
+    normalized = re.sub(r"[ \t]+", " ", normalized)
+    normalized = re.sub(r"\n{3,}", "\n\n", normalized)
+
+    return normalized.strip()
+
+
+def _should_ignore_scan_term(
+    term: str,
+    *,
+    minimum_length: int = 2,
+) -> bool:
+    """判斷某個候選詞是否不適合拿來做主題掃描。"""
+    term = term.strip()
+
+    if not term:
+        return True
+
+    if len(term) < minimum_length:
+        return True
+
+    if term in SCAN_IGNORED_CONCEPTS:
+        return True
+
+    # 純整數、小數、正負數
+    # 例如：5、-1、3.14、+8
+    if re.fullmatch(r"[+-]?\d+(?:\.\d+)?", term):
+        return True
+
+    # 數字加單一英文字母
+    # 例如：5x、12y、3a
+    if re.fullmatch(r"[+-]?\d+[a-zA-Z]", term):
+        return True
+
+    # 英文字母加數字
+    # 例如：x2、a5、y10
+    if re.fullmatch(r"[a-zA-Z]\d+", term):
+        return True
+
+    # 單獨變數或帶正負號的變數
+    # 例如：x、-x、+y、a
+    if re.fullmatch(r"[+-]?[a-zA-Z]", term):
+        return True
+
+    # 變數的次方
+    # 例如：x²、x³、x^2、a^10
+    if re.fullmatch(
+        r"[+-]?[a-zA-Z](?:\^[+-]?\d+|[²³⁴⁵⁶⁷⁸⁹⁰]+)",
+        term,
+    ):
+        return True
+
+    # 係數乘變數及其冪次
+    # 例如：5x²、-3y^2、10a³
+    if re.fullmatch(
+        r"[+-]?\d+(?:\.\d+)?[a-zA-Z]"
+        r"(?:\^[+-]?\d+|[²³⁴⁵⁶⁷⁸⁹⁰]+)?",
+        term,
+    ):
+        return True
+
+    # 簡單分數或比例
+    # 例如：3/4、-1/2、2:3、5：8
+    if re.fullmatch(
+        r"[+-]?\d+\s*(?:/|:|：)\s*[+-]?\d+",
+        term,
+    ):
+        return True
+
+    # 百分比
+    # 例如：20%、-5%、12.5%
+    if re.fullmatch(
+        r"[+-]?\d+(?:\.\d+)?%",
+        term,
+    ):
+        return True
+
+    # 只包含英文字母、數字和數學符號，
+    # 並且至少含有一個數學運算符號。
+    # 例如：x+5、2x+3、x²-5x+6、y=x+1、x!=2
+    if (
+        re.fullmatch(
+            r"[0-9a-zA-Z\s+\-*/^=<>!().²³⁴⁵⁶⁷⁸⁹⁰]+",
+            term,
+        )
+        and re.search(r"[+\-*/^=<>!]", term)
+    ):
+        return True
+
+    # 常見函數表示式
+    # 例如：f(x)、g(x)、f(x)=x²
+    if re.fullmatch(
+        r"[a-zA-Z]\s*\([^)]*\)"
+        r"(?:\s*[=<>!]+\s*.+)?",
+        term,
+    ):
+        return True
+
+    # 數學區間
+    # 例如：(1, 5)、[-2, 3]、(0, +∞)
+    if re.fullmatch(
+        r"[\[(]\s*[+\-]?(?:\d+(?:\.\d+)?|∞)"
+        r"\s*,\s*[+\-]?(?:\d+(?:\.\d+)?|∞)\s*[\])]",
+        term,
+    ):
+        return True
+
+    # 座標
+    # 例如：(3, 4)、(-1, 2)
+    if re.fullmatch(
+        r"\(\s*[+-]?\d+(?:\.\d+)?"
+        r"\s*,\s*[+-]?\d+(?:\.\d+)?\s*\)",
+        term,
+    ):
+        return True
+
+    return False
+
 def scan_text_for_topics(
     text: str,
     scan_topics: list[dict],
@@ -948,7 +1157,8 @@ def scan_text_for_topics(
 ) -> list[dict]:
     """掃描文字並回傳命中的知識主題。"""
     original_text = text.strip()
-    normalized_text = original_text.casefold()
+    scan_text = _normalize_scan_input(original_text)
+    normalized_text = scan_text.casefold()
 
     if not normalized_text:
         return []
@@ -1075,7 +1285,9 @@ def interactive_scan_main(
     minimum_length: int = 2,
 ) -> None:
     """重複掃描文字，並允許直接開啟命中的主題。"""
-    scan_topics = collect_scan_topics()
+    scan_topics = collect_scan_topics(
+        minimum_length=minimum_length,
+    )
 
     exit_commands = {
         "0",
@@ -1204,7 +1416,9 @@ def scan_main(
         )
         return
 
-    scan_topics = collect_scan_topics()
+    scan_topics = collect_scan_topics(
+        minimum_length=minimum_length,
+    )
 
     matched_topics = scan_text_for_topics(
         text,
