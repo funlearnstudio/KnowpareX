@@ -341,7 +341,169 @@ knowparex search "電流" --category "磁學" --limit 10
 ```bash
 knowparex search "能量" --summary --category "熱學與熱力學"
 ```
+### Count results / 統計搜尋結果
 
+Show only the number of matching categories, topics, and knowledge records.
+
+只顯示符合的分類數、主題數與知識紀錄數。
+
+```bash
+knowparex search "水" --count
+```
+
+This is useful when a keyword produces a large number of results.
+
+當搜尋字詞產生大量結果時，可以先使用此功能查看規模。
+
+---
+
+### Random result / 隨機搜尋結果
+
+Randomly select one matching knowledge record.
+
+從符合的知識紀錄中隨機選出一筆。
+
+```bash
+knowparex search "能量" --random
+```
+
+This can also be combined with a category filter:
+
+也可以搭配分類限制：
+
+```bash
+knowparex search "能量" --category "植物與生態" --random
+```
+
+This mode can be used for quick review or discovering unexpected connections.
+
+此模式適合快速複習，或隨機探索不同知識關係。
+
+---
+
+### Tree view / 樹狀檢視
+
+Display matching topics grouped by category in a tree structure.
+
+依分類將符合的主題顯示成樹狀結構。
+
+```bash
+knowparex search "能量" --tree
+```
+
+Example:
+
+```text
+├── 植物與生態
+    ├── 能量金字塔（7 筆）
+    └── 食物鏈與食物網（2 筆）
+├── 熱學與熱力學
+    ├── 內能（1 筆）
+    └── 潛熱（4 筆）
+└── 細胞與代謝
+    └── ATP（3 筆）
+```
+
+This mode provides a compact overview of how one keyword appears across different subjects.
+
+此模式可以快速查看同一個關鍵字分布在哪些分類與主題中。
+
+---
+
+### Open a topic from search / 從搜尋結果開啟主題
+
+Display a numbered topic list and open the complete selected topic.
+
+顯示帶有編號的主題清單，並直接開啟選定主題的完整內容。
+
+```bash
+knowparex search "能量" --open
+```
+
+Example:
+
+```text
+1. 植物與生態 / 能量金字塔
+2. 細胞與代謝 / ATP
+3. 熱學與熱力學 / 內能
+0. 取消
+
+請輸入要開啟的主題編號：
+```
+
+After selecting a topic, KnowpareX displays all records in that topic, not only records containing the search keyword.
+
+選擇後會顯示該主題的所有資料，而不只是包含搜尋關鍵字的紀錄。
+
+---
+## Additional tools / 其他工具
+
+### Database statistics / 資料庫統計
+
+```bash
+knowparex stats
+```
+
+Displays category counts, topic counts, knowledge-record counts, averages, largest topics, and common relationship types.
+
+顯示分類數、主題數、知識紀錄數、平均值、最大主題及常見關係類型。
+
+### Today's knowledge / 今日知識
+
+```bash
+knowparex today
+```
+
+Displays one recommended topic each day. The result remains the same during the same calendar day.
+
+每天推薦一個主題；同一天執行時會得到相同結果。
+
+### Explain a topic / 文字解釋主題
+
+```bash
+knowparex explain "有機化學" "醇"
+```
+
+Converts structured records into readable sentences without adding information outside the database.
+
+將結構化紀錄轉換成容易閱讀的句子，不加入資料庫以外的資訊。
+
+### Export a topic / 匯出主題
+
+```bash
+knowparex export "有機化學" "醇" --format md
+knowparex export "有機化學" "醇" --format txt
+knowparex export "有機化學" "醇" --format json
+```
+
+Specify an output filename:
+
+```bash
+knowparex export "有機化學" "醇" --format json --output alcohol.json
+```
+
+Supported formats:
+
+- `md`
+- `txt`
+- `json`
+
+### Related topics / 相關主題
+
+```bash
+knowparex related "有機化學" "醇"
+```
+
+Limit the number of results:
+
+```bash
+knowparex related "有機化學" "醇" --limit 5
+```
+
+Related topics are estimated from shared text and knowledge fields. The result is intended for exploration and may include unexpected matches.
+
+相關主題依照共同文字與知識欄位估算，適合探索使用，可能包含意外的搜尋結果。
+### Search display options / 搜尋顯示選項
 Available search options:
 
 ```text
@@ -353,6 +515,25 @@ Available search options:
 --limit         Limit the number of displayed records
 --json          Output search results as JSON
 ```
+
+```text
+--count     Show search result counts only
+--random    Show one random matching record
+--tree      Display matching topics as a category tree
+--open      Select and open a complete topic
+```
+
+```text
+--count     只顯示搜尋統計
+--random    隨機顯示一筆符合紀錄
+--tree      以分類樹狀結構顯示主題
+--open      選擇並開啟完整主題
+```
+
+Only one of `--count`, `--random`, `--tree`, `--open`, or `--json` should be used at a time.
+
+`--count`、`--random`、`--tree`、`--open` 與 `--json` 一次只能選擇其中一種顯示模式。
+
 ## 查看說明
 
 ```bash
