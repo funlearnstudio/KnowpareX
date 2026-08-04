@@ -173,6 +173,7 @@ knowparex --items 電學
 knowparex --topic 電學 歐姆定律
 knowparex-compare
 knowparex topic "有機化學" "醇" --json
+knowparex search "電學"
 ```
 
 ## Public API / 使用者介面

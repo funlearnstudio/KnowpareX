@@ -210,7 +210,149 @@ knowparex items "電學"
 knowparex topic "電學" "歐姆定律"
 knowparex topic "有機化學" "醇" --json
 ```
+## Search / 搜尋
 
+KnowpareX can search category names, topic names, and all structured knowledge records.
+
+KnowpareX 可以搜尋分類名稱、主題名稱，以及所有結構化知識紀錄。
+
+### Basic search / 基本搜尋
+
+```bash
+knowparex search "能量"
+```
+
+The default search checks:
+
+- Category names
+- Topic names
+- Relationship fields
+- Left-side content and labels
+- Right-side content and labels
+
+預設搜尋範圍包括：
+
+- 分類名稱
+- 主題名稱
+- 關係欄位
+- 左側內容與標籤
+- 右側內容與標籤
+
+---
+
+### Summary mode / 摘要模式
+
+Show search statistics and matching topics without displaying every knowledge record.
+
+只顯示搜尋統計與符合的主題，不列出所有知識紀錄。
+
+```bash
+knowparex search "能量" --summary
+```
+
+---
+
+### Exact match / 完全符合
+
+Only match fields whose complete content equals the search keyword.
+
+只匹配整個欄位內容完全等於搜尋文字的結果。
+
+```bash
+knowparex search "醇" --exact
+```
+
+For example, this can match `醇` without matching `乙醇` or `醇厚`.
+
+例如，這可以只匹配「醇」，而不匹配「乙醇」或「醇厚」。
+
+---
+
+### Topic-only search / 只搜尋主題
+
+Search only category and topic names.
+
+只搜尋分類名稱與主題名稱。
+
+```bash
+knowparex search "水" --topic-only
+```
+
+---
+
+### Record-only search / 只搜尋知識紀錄
+
+Search only the structured knowledge records, without treating category or topic names as direct matches.
+
+只搜尋結構化知識紀錄，不把分類或主題名稱視為直接命中。
+
+```bash
+knowparex search "電流" --record-only
+```
+
+---
+
+### Search within one category / 限制搜尋分類
+
+Search only inside a specified category.
+
+只在指定分類中搜尋。
+
+```bash
+knowparex search "電流" --category "磁學"
+```
+
+---
+
+### Limit displayed records / 限制顯示數量
+
+Limit the number of detailed knowledge records shown in the terminal.
+
+限制終端機顯示的詳細知識紀錄數量。
+
+```bash
+knowparex search "水" --limit 20
+```
+
+---
+
+### JSON search output / JSON 搜尋輸出
+
+Return structured JSON for websites, scripts, or other applications.
+
+輸出結構化 JSON，方便網站、腳本或其他應用程式使用。
+
+```bash
+knowparex search "能量" --json
+```
+
+---
+
+### Combine search options / 組合搜尋選項
+
+Search options can be combined.
+
+搜尋選項可以一起使用。
+
+```bash
+knowparex search "電流" --category "磁學" --limit 10
+```
+
+```bash
+knowparex search "能量" --summary --category "熱學與熱力學"
+```
+
+Available search options:
+
+```text
+--summary       Show only the summary and matching topics
+--exact         Match complete field contents only
+--topic-only    Search category and topic names only
+--record-only   Search knowledge records only
+--category      Search inside one specified category
+--limit         Limit the number of displayed records
+--json          Output search results as JSON
+```
 ## 查看說明
 
 ```bash

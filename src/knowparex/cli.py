@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import argparse
 import json
-
+import re
 from .knowledge_service import get_categories, get_items, get_topic_data
-
+from collections import defaultdict
 
 def print_topic_text(category: str, item: str) -> None:
     """以適合人閱讀的格式顯示主題資料。"""
@@ -24,25 +24,115 @@ def print_topic_text(category: str, item: str) -> None:
 
     print("=" * 55)
 
-def search_main(keyword: str) -> None:
-    """搜尋分類、主題名稱與所有知識紀錄。"""
-    keyword = keyword.strip().casefold()
 
-    if not keyword:
+
+
+def format_record(record: dict) -> str:
+    """將一筆知識紀錄轉為適合人閱讀的文字。"""
+    return (
+        f'{record.get("code_a", "")} '
+        f'({record.get("language_a", "")}) '
+        f'=> {record.get("relation", "")} <= '
+        f'{record.get("code_b", "")} '
+        f'({record.get("language_b", "")})'
+    )
+
+
+def text_matches(
+    keyword: str,
+    value: object,
+    *,
+    exact: bool = False,
+) -> bool:
+    """判斷文字是否符合搜尋關鍵字。"""
+    normalized_value = str(value).casefold()
+    normalized_keyword = keyword.casefold()
+
+    if exact:
+        # 避免「醇」匹配到「乙醇」或「醇厚」
+        pattern = rf"(?<!\w){re.escape(normalized_keyword)}(?!\w)"
+        return re.search(pattern, normalized_value) is not None
+
+    return normalized_keyword in normalized_value
+
+def search_main(
+    keyword: str,
+    *,
+    summary_only: bool = False,
+    exact: bool = False,
+    topic_only: bool = False,
+    record_only: bool = False,
+    category_filter: str | None = None,
+    limit: int | None = None,
+    json_output: bool = False,
+) -> None:
+    """搜尋分類、主題與知識內容。"""
+    original_keyword = keyword.strip()
+    normalized_keyword = original_keyword.casefold()
+
+    if not normalized_keyword:
         print("搜尋關鍵字不可為空。")
         return
 
-    topic_matches: list[tuple[str, str]] = []
-    record_matches: list[tuple[str, str, dict]] = []
+    if topic_only and record_only:
+        print("不能同時使用 --topic-only 與 --record-only。")
+        return
 
-    for category in get_categories():
-        category_matched = keyword in category.casefold()
+    if limit is not None and limit < 1:
+        print("--limit 必須大於 0。")
+        return
+
+    all_categories = get_categories()
+
+    if category_filter is not None:
+        matching_categories = [
+            category
+            for category in all_categories
+            if category.casefold() == category_filter.casefold()
+        ]
+
+        if not matching_categories:
+            print(f'找不到分類：「{category_filter}」')
+            return
+
+        categories_to_search = matching_categories
+    else:
+        categories_to_search = all_categories
+
+    direct_topic_matches: set[tuple[str, str]] = set()
+    matched_topics: set[tuple[str, str]] = set()
+
+    grouped_records: dict[
+        tuple[str, str],
+        list[dict],
+    ] = defaultdict(list)
+
+    seen_records: set[tuple] = set()
+
+    for category in categories_to_search:
+        category_matches = text_matches(
+            original_keyword,
+            category,
+            exact=exact,
+        )
 
         for item in get_items(category):
-            item_matched = keyword in item.casefold()
+            topic_key = (category, item)
 
-            if category_matched or item_matched:
-                topic_matches.append((category, item))
+            item_matches = text_matches(
+                original_keyword,
+                item,
+                exact=exact,
+            )
+
+            if not record_only and (
+                category_matches or item_matches
+            ):
+                direct_topic_matches.add(topic_key)
+                matched_topics.add(topic_key)
+
+            if topic_only:
+                continue
 
             try:
                 records = get_topic_data(category, item)
@@ -50,68 +140,258 @@ def search_main(keyword: str) -> None:
                 continue
 
             for record in records:
-                searchable_values = (
-                    record.get("relation", ""),
-                    record.get("code_a", ""),
-                    record.get("language_a", ""),
-                    record.get("code_b", ""),
-                    record.get("language_b", ""),
+                searchable_fields = {
+                    "relation": record.get("relation", ""),
+                    "code_a": record.get("code_a", ""),
+                    "language_a": record.get("language_a", ""),
+                    "code_b": record.get("code_b", ""),
+                    "language_b": record.get("language_b", ""),
+                }
+
+                matched_fields = [
+                    field_name
+                    for field_name, value in searchable_fields.items()
+                    if text_matches(
+                        original_keyword,
+                        value,
+                        exact=exact,
+                    )
+                ]
+
+                if not matched_fields:
+                    continue
+
+                record_key = (
+                    category,
+                    item,
+                    record.get("relation"),
+                    record.get("code_a"),
+                    record.get("language_a"),
+                    record.get("code_b"),
+                    record.get("language_b"),
                 )
 
-                if any(keyword in str(value).casefold() for value in searchable_values):
-                    record_matches.append((category, item, record))
+                if record_key in seen_records:
+                    continue
 
-    if not topic_matches and not record_matches:
-        print(f'找不到與「{keyword}」相關的內容。')
+                seen_records.add(record_key)
+                matched_topics.add(topic_key)
+
+                result_record = dict(record)
+                result_record["matched_fields"] = matched_fields
+
+                grouped_records[topic_key].append(result_record)
+
+    if not matched_topics:
+        print(f'找不到與「{original_keyword}」相關的內容。')
+        return
+
+    sorted_topics = sorted(
+        matched_topics,
+        key=lambda topic: (
+            topic not in direct_topic_matches,
+            topic[0],
+            topic[1],
+        ),
+    )
+
+    category_topics: dict[str, set[str]] = defaultdict(set)
+    category_record_counts: dict[str, int] = defaultdict(int)
+
+    for category, item in sorted_topics:
+        category_topics[category].add(item)
+        category_record_counts[category] += len(
+            grouped_records.get((category, item), [])
+        )
+
+    total_records = sum(
+        len(records)
+        for records in grouped_records.values()
+    )
+
+    if json_output:
+        output = {
+            "keyword": original_keyword,
+            "options": {
+                "exact": exact,
+                "topic_only": topic_only,
+                "record_only": record_only,
+                "category": category_filter,
+                "limit": limit,
+            },
+            "summary": {
+                "category_count": len(category_topics),
+                "topic_count": len(matched_topics),
+                "direct_topic_match_count": len(
+                    direct_topic_matches
+                ),
+                "record_count": total_records,
+            },
+            "topics": [],
+        }
+
+        shown_count = 0
+
+        for category, item in sorted_topics:
+            records = grouped_records.get(
+                (category, item),
+                [],
+            )
+
+            if limit is not None:
+                remaining = max(limit - shown_count, 0)
+                records = records[:remaining]
+
+            output["topics"].append(
+                {
+                    "category": category,
+                    "item": item,
+                    "direct_topic_match": (
+                        (category, item)
+                        in direct_topic_matches
+                    ),
+                    "records": records,
+                }
+            )
+
+            shown_count += len(records)
+
+            if limit is not None and shown_count >= limit:
+                break
+
+        print(
+            json.dumps(
+                output,
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
         return
 
     print()
     print("=" * 55)
-    print(f'搜尋結果：「{keyword}」')
+    print(f'搜尋結果：「{original_keyword}」')
     print("=" * 55)
 
-    if topic_matches:
-        print("\n【符合的分類／主題】")
+    print()
+    print("【搜尋摘要】")
+    print(f"涉及分類：{len(category_topics)}")
+    print(f"涉及主題：{len(matched_topics)}")
+    print(
+        "主題名稱直接命中："
+        f"{len(direct_topic_matches)}"
+    )
+    print(f"知識紀錄：{total_records}")
 
-        for category, item in topic_matches:
-            print(f"- {category} / {item}")
+    if category_filter:
+        print(f"限制分類：{category_filter}")
 
-    if record_matches:
-        print("\n【符合的知識內容】")
+    if exact:
+        print("搜尋模式：完全符合")
 
-        shown_records: set[tuple] = set()
+    print()
+    print("【分類統計】")
 
-        for category, item, record in record_matches:
-            record_key = (
-                category,
-                item,
-                record.get("relation"),
-                record.get("code_a"),
-                record.get("language_a"),
-                record.get("code_b"),
-                record.get("language_b"),
+    for category in sorted(category_topics):
+        print(
+            f"- {category}："
+            f"{len(category_topics[category])} 個主題，"
+            f"{category_record_counts[category]} 筆紀錄"
+        )
+
+    print()
+    print("【所有符合的主題】")
+
+    for category, item in sorted_topics:
+        record_count = len(
+            grouped_records.get((category, item), [])
+        )
+
+        mark = (
+            " ★ 主題名稱命中"
+            if (category, item) in direct_topic_matches
+            else ""
+        )
+
+        print(
+            f"- {category} / {item}"
+            f"（{record_count} 筆）"
+            f"{mark}"
+        )
+
+    if summary_only or topic_only:
+        print()
+        print("=" * 55)
+        return
+
+    print()
+    print("【詳細知識內容】")
+
+    shown_records = 0
+    limit_reached = False
+
+    for category, item in sorted_topics:
+        records = grouped_records.get(
+            (category, item),
+            [],
+        )
+
+        if not records:
+            continue
+
+        if limit is not None:
+            remaining = limit - shown_records
+
+            if remaining <= 0:
+                limit_reached = True
+                break
+
+            records = records[:remaining]
+
+        print()
+        print("=" * 55)
+        print(
+            f"{category} / {item}"
+            f"（{len(records)} 筆顯示）"
+        )
+        print("=" * 55)
+
+        for record in records:
+            print(format_record(record))
+
+            matched_fields = record.get(
+                "matched_fields",
+                [],
             )
 
-            if record_key in shown_records:
-                continue
+            if matched_fields:
+                print(
+                    "  匹配欄位："
+                    + ", ".join(matched_fields)
+                )
 
-            shown_records.add(record_key)
+            shown_records += 1
 
-            print()
-            print(f"[{category} / {item}]")
-            print(
-                f'{record.get("code_a", "")} '
-                f'({record.get("language_a", "")}) '
-                f'=> {record.get("relation", "")} <= '
-                f'{record.get("code_b", "")} '
-                f'({record.get("language_b", "")})'
+        if limit is not None and shown_records >= limit:
+            limit_reached = (
+                shown_records < total_records
             )
+            break
+
+    if limit_reached:
+        print()
+        print(
+            f"只顯示前 {limit} 筆，"
+            f"其餘 {total_records - shown_records} 筆已省略。"
+        )
 
     print()
     print("=" * 55)
     print(
-        f"主題結果：{len(topic_matches)}，"
-        f"知識紀錄：{len(record_matches)}"
+        f"分類：{len(category_topics)}，"
+        f"主題：{len(matched_topics)}，"
+        f"主題名稱命中：{len(direct_topic_matches)}，"
+        f"知識紀錄：{total_records}"
     )
 def compare_main() -> None:
     print("=" * 55)
@@ -204,9 +484,51 @@ def main() -> None:
         "search",
         help="搜尋分類、主題與知識內容",
     )
+
     search_parser.add_argument(
         "keyword",
         help="搜尋關鍵字",
+    )
+
+    search_parser.add_argument(
+        "--summary",
+        action="store_true",
+        help="只顯示摘要與符合主題",
+    )
+
+    search_parser.add_argument(
+        "--exact",
+        action="store_true",
+        help="只匹配完整欄位內容",
+    )
+
+    search_parser.add_argument(
+        "--topic-only",
+        action="store_true",
+        help="只搜尋分類與主題名稱",
+    )
+
+    search_parser.add_argument(
+        "--record-only",
+        action="store_true",
+        help="只搜尋知識紀錄",
+    )
+
+    search_parser.add_argument(
+        "--category",
+        help="只搜尋指定分類",
+    )
+
+    search_parser.add_argument(
+        "--limit",
+        type=int,
+        help="限制詳細紀錄顯示數量",
+    )
+
+    search_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="以 JSON 格式輸出搜尋結果",
     )
     topic_parser.add_argument(
         "category",
@@ -255,7 +577,16 @@ def main() -> None:
             else:
                 print_topic_text(args.category, args.item)
         elif args.command == "search":
-            search_main(args.keyword)
+            search_main(
+                args.keyword,
+                summary_only=args.summary,
+                exact=args.exact,
+                topic_only=args.topic_only,
+                record_only=args.record_only,
+                category_filter=args.category,
+                limit=args.limit,
+                json_output=args.json,
+            )
     except KeyError as error:
         parser.error(str(error))
 

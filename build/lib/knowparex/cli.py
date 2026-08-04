@@ -24,7 +24,95 @@ def print_topic_text(category: str, item: str) -> None:
 
     print("=" * 55)
 
+def search_main(keyword: str) -> None:
+    """搜尋分類、主題名稱與所有知識紀錄。"""
+    keyword = keyword.strip().casefold()
 
+    if not keyword:
+        print("搜尋關鍵字不可為空。")
+        return
+
+    topic_matches: list[tuple[str, str]] = []
+    record_matches: list[tuple[str, str, dict]] = []
+
+    for category in get_categories():
+        category_matched = keyword in category.casefold()
+
+        for item in get_items(category):
+            item_matched = keyword in item.casefold()
+
+            if category_matched or item_matched:
+                topic_matches.append((category, item))
+
+            try:
+                records = get_topic_data(category, item)
+            except KeyError:
+                continue
+
+            for record in records:
+                searchable_values = (
+                    record.get("relation", ""),
+                    record.get("code_a", ""),
+                    record.get("language_a", ""),
+                    record.get("code_b", ""),
+                    record.get("language_b", ""),
+                )
+
+                if any(keyword in str(value).casefold() for value in searchable_values):
+                    record_matches.append((category, item, record))
+
+    if not topic_matches and not record_matches:
+        print(f'找不到與「{keyword}」相關的內容。')
+        return
+
+    print()
+    print("=" * 55)
+    print(f'搜尋結果：「{keyword}」')
+    print("=" * 55)
+
+    if topic_matches:
+        print("\n【符合的分類／主題】")
+
+        for category, item in topic_matches:
+            print(f"- {category} / {item}")
+
+    if record_matches:
+        print("\n【符合的知識內容】")
+
+        shown_records: set[tuple] = set()
+
+        for category, item, record in record_matches:
+            record_key = (
+                category,
+                item,
+                record.get("relation"),
+                record.get("code_a"),
+                record.get("language_a"),
+                record.get("code_b"),
+                record.get("language_b"),
+            )
+
+            if record_key in shown_records:
+                continue
+
+            shown_records.add(record_key)
+
+            print()
+            print(f"[{category} / {item}]")
+            print(
+                f'{record.get("code_a", "")} '
+                f'({record.get("language_a", "")}) '
+                f'=> {record.get("relation", "")} <= '
+                f'{record.get("code_b", "")} '
+                f'({record.get("language_b", "")})'
+            )
+
+    print()
+    print("=" * 55)
+    print(
+        f"主題結果：{len(topic_matches)}，"
+        f"知識紀錄：{len(record_matches)}"
+    )
 def compare_main() -> None:
     print("=" * 55)
     print("KnowpareX / Steve 知識資料庫")
@@ -112,6 +200,14 @@ def main() -> None:
         "topic",
         help="顯示一個主題",
     )
+    search_parser = subparsers.add_parser(
+        "search",
+        help="搜尋分類、主題與知識內容",
+    )
+    search_parser.add_argument(
+        "keyword",
+        help="搜尋關鍵字",
+    )
     topic_parser.add_argument(
         "category",
         help="分類名稱",
@@ -155,9 +251,11 @@ def main() -> None:
                         indent=2,
                     )
                 )
+            
             else:
                 print_topic_text(args.category, args.item)
-
+        elif args.command == "search":
+            search_main(args.keyword)
     except KeyError as error:
         parser.error(str(error))
 
