@@ -33,9 +33,9 @@ Think of it as a searchable knowledge database for Python.<br>
 ## Features / 特色
 Current Features:
 
-✓ **66** categories<br>
-✓ **1580** registered topics<br>
-✓ **6565** knowledge relations<br>
+✓ **71** categories<br>
+✓ **1678** registered topics<br>
+✓ **6871** knowledge relations<br>
 ✓ Python API<br>
 ✓ CLI<br>
 ✓ JSON output<br>
