@@ -4,6 +4,12 @@ import argparse
 import json
 import re
 from .knowledge_service import get_categories, get_items, get_topic_data
+from .curriculum_quality import (
+    BROAD_CONCEPT_TERMS,
+    RECOMMENDATION_STOPWORDS,
+    concept_terms,
+    normalize_for_compare,
+)
 from collections import defaultdict
 import random
 from datetime import date
@@ -448,8 +454,50 @@ def search_main(
             ]
 
             # 顯示這個主題的全部資料，
-            # 不只是符合搜尋字詞的資料
-            print_topic_text(category, item)
+            # 不只是符合搜尋字詞的資料。
+            #
+            # 課程資料必須使用課程文章顯示器，不能把完整顯示路徑
+            # 當成一般知識庫主題重新查詢。
+            selected_source = (
+                "curriculum"
+                if (
+                    source == "curriculum"
+                    or (
+                        source == "all"
+                        and category.startswith("課程 /")
+                    )
+                )
+                else "knowledge"
+            )
+
+            if selected_source == "curriculum":
+                from .curriculum_adapter import (
+                    get_curriculum_lesson_article,
+                )
+
+                article = get_curriculum_lesson_article(
+                    category,
+                    item,
+                )
+                recommendations = (
+                    get_curriculum_search_recommendations(
+                        category,
+                        item,
+                        article,
+                        limit=5,
+                    )
+                )
+                print_curriculum_lesson_article(
+                    article,
+                    recommendations,
+                )
+            else:
+                print_topic_text(
+                    category,
+                    item,
+                    source="knowledge",
+                )
+
             return
     if json_output:
         output = {
@@ -1535,75 +1583,92 @@ def curriculum_units_main(
 
 
 
-CURRICULUM_RECOMMENDATION_IGNORED_TERMS = {
-    "單元", "課程", "教材", "內容", "重點", "知識", "概念",
-    "公式", "規則", "方法", "題目", "答案", "條件", "關係",
-    "表示", "說明", "學習", "練習", "計算", "檢查", "合理性",
-    "圖形", "表格", "輸入", "輸出",
-}
+CURRICULUM_RECOMMENDATION_IGNORED_TERMS = RECOMMENDATION_STOPWORDS
 
 
-def _recommendation_terms(article: dict) -> list[str]:
-    """從課程文章擷取適合推薦搜尋的關鍵詞。"""
-    values: list[str] = []
+def _recommendation_terms(article: dict) -> list[tuple[str, int, str]]:
+    """Return (term, weight, origin) without generic prose words."""
+    values: list[tuple[str, int, str]] = []
 
     title = str(article.get("title", "")).strip()
     if title:
-        values.append(title)
+        values.append((title, 16, "title"))
 
     for point in article.get("key_points", []) or []:
         topic = str(point.get("topic", "")).strip()
         if topic:
-            values.append(topic)
+            values.append((topic, 12, "key_point"))
 
     for formula in article.get("formulas", []) or []:
         formula_text = str(formula).strip()
         if not formula_text:
             continue
 
-        # 只擷取公式中的中文概念名稱，不把變數或符號當成推薦詞。
-        values.extend(
-            re.findall(r"[\u4e00-\u9fff]{2,}", formula_text)
-        )
+        # A formula label before the colon is intentional metadata.  Words
+        # occurring later may only be connective prose and are not candidates.
+        label = re.split(r"[：:]", formula_text, maxsplit=1)[0].strip()
+        if 2 <= len(label) <= 16 and re.search(r"[\u4e00-\u9fff]", label):
+            values.append((label, 7, "formula"))
 
-    terms: list[str] = []
+    terms: list[tuple[str, int, str]] = []
     seen: set[str] = set()
 
-    for value in values:
+    for value, weight, origin in values:
         normalized = value.casefold().strip()
 
         if (
             len(normalized) < 2
             or normalized in CURRICULUM_RECOMMENDATION_IGNORED_TERMS
+            or normalized in BROAD_CONCEPT_TERMS
             or normalized in seen
         ):
             continue
 
         seen.add(normalized)
-        terms.append(value.strip())
+        terms.append((value.strip(), weight, origin))
 
     return terms
 
 
-def _topic_search_text(
+def _topic_search_concepts(
     category: str,
     item: str,
     records: list[dict],
-) -> str:
-    """建立推薦比對用文字。"""
-    parts = [category, item]
+) -> set[str]:
+    """Build concepts from names and compact records, never full lesson prose."""
+    values = [category, item, item.rsplit("/", 1)[-1].strip()]
 
     for record in records:
-        for field in (
-            "relation",
-            "code_a",
-            "language_a",
-            "code_b",
-            "language_b",
+        language_a = str(record.get("language_a", ""))
+        language_b = str(record.get("language_b", ""))
+        for field, language in (
+            ("code_a", language_a),
+            ("code_b", language_b),
         ):
-            parts.append(str(record.get(field, "")))
+            value = str(record.get(field, "")).strip()
+            if not value or language in {"課文", "解釋", "例子"}:
+                continue
+            if len(value) <= 48:
+                values.append(value)
+            elif language == "公式或規則":
+                values.extend(re.findall(r"[\u4e00-\u9fff]{2,12}", value))
 
-    return " ".join(parts).casefold()
+    concepts: set[str] = set()
+    for value in values:
+        normalized = normalize_for_compare(value)
+        if (
+            len(normalized) >= 2
+            and normalized not in RECOMMENDATION_STOPWORDS
+            and normalized not in BROAD_CONCEPT_TERMS
+        ):
+            concepts.add(normalized)
+        concepts.update(
+            normalize_for_compare(term)
+            for term in concept_terms(value)
+            if term not in RECOMMENDATION_STOPWORDS
+            and term not in BROAD_CONCEPT_TERMS
+        )
+    return {value for value in concepts if len(value) >= 2}
 
 
 def get_curriculum_search_recommendations(
@@ -1624,6 +1689,12 @@ def get_curriculum_search_recommendations(
 
     candidates: list[dict] = []
     seen_topics: set[tuple[str, str, str]] = set()
+
+    current_subject = current_category.rsplit("/", 1)[-1].strip().casefold()
+    current_book = current_item.rsplit("/", 1)[0].strip().casefold()
+    current_basename = normalize_for_compare(
+        current_item.rsplit("/", 1)[-1].strip()
+    )
 
     for source in ("knowledge", "curriculum"):
         try:
@@ -1659,34 +1730,44 @@ def get_curriculum_search_recommendations(
                 except (KeyError, ValueError):
                     continue
 
-                searchable_text = _topic_search_text(
+                candidate_concepts = _topic_search_concepts(
                     category,
                     item,
                     records,
                 )
-                item_text = item.casefold()
-                basename = item.rsplit("/", 1)[-1].strip().casefold()
+                item_text = normalize_for_compare(item)
+                basename = normalize_for_compare(
+                    item.rsplit("/", 1)[-1].strip()
+                )
+                if basename == current_basename:
+                    continue
+                candidate_subject = category.rsplit(
+                    "/", 1
+                )[-1].strip().casefold()
+                candidate_book = item.rsplit(
+                    "/", 1
+                )[0].strip().casefold()
 
                 matched_terms: list[str] = []
                 score = 0
 
-                for term in terms:
-                    normalized = term.casefold()
+                for term, weight, origin in terms:
+                    normalized = normalize_for_compare(term)
 
                     if basename == normalized:
-                        score += 14
+                        score += weight + 4
                         matched_terms.append(term)
-                    elif normalized in basename:
-                        score += 8
+                    elif len(normalized) >= 3 and normalized in basename:
+                        score += weight
                         matched_terms.append(term)
-                    elif basename in normalized and len(basename) >= 2:
-                        score += 5
+                    elif len(basename) >= 3 and basename in normalized:
+                        score += max(4, weight - 4)
                         matched_terms.append(term)
-                    elif normalized in item_text:
-                        score += 6
+                    elif normalized in candidate_concepts:
+                        score += weight
                         matched_terms.append(term)
-                    elif normalized in searchable_text:
-                        score += 2
+                    elif origin != "formula" and normalized in item_text:
+                        score += max(4, weight - 5)
                         matched_terms.append(term)
 
                 if not matched_terms:
@@ -1696,7 +1777,17 @@ def get_curriculum_search_recommendations(
                     source == "curriculum"
                     and category == current_category
                 ):
-                    score += 2
+                    score += 4
+                    if candidate_book == current_book:
+                        score += 3
+
+                if candidate_subject != current_subject:
+                    score -= 6
+
+                # A candidate must have a strong concept match after penalties;
+                # one accidental broad word is never enough.
+                if score < 7:
+                    continue
 
                 candidates.append({
                     "score": score,
@@ -1805,6 +1896,7 @@ def print_curriculum_lesson_article(
     paragraphs = article.get("paragraphs", []) or []
     formulas = article.get("formulas", []) or []
     key_points = article.get("key_points", []) or []
+    examples = article.get("examples", []) or []
 
     for paragraph in paragraphs:
         text = str(paragraph).strip()
@@ -1821,16 +1913,11 @@ def print_curriculum_lesson_article(
             explanation = str(
                 point.get("explanation", "")
             ).strip()
-            example = str(point.get("example", "")).strip()
-
             heading = topic or f"重點 {index}"
             print(f"{index}. {heading}")
 
             if explanation:
                 print(explanation)
-
-            if example:
-                print(f"例子：{example}")
 
             print()
 
@@ -1845,7 +1932,18 @@ def print_curriculum_lesson_article(
 
         print()
 
-    if not paragraphs and not key_points and not formulas:
+    if examples:
+        print("【例子】")
+        print()
+
+        for example in examples:
+            text = str(example).strip()
+            if text:
+                print(f"- {text}")
+
+        print()
+
+    if not paragraphs and not key_points and not formulas and not examples:
         print("這個單元目前沒有可顯示的教材內容。")
         print()
 

@@ -4,14 +4,25 @@ import argparse
 import json
 import re
 from .knowledge_service import get_categories, get_items, get_topic_data
+from .curriculum_quality import (
+    BROAD_CONCEPT_TERMS,
+    RECOMMENDATION_STOPWORDS,
+    concept_terms,
+    normalize_for_compare,
+)
 from collections import defaultdict
 import random
 from datetime import date
 from pathlib import Path
 
-def print_topic_text(category: str, item: str) -> None:
+def print_topic_text(
+    category: str,
+    item: str,
+    *,
+    source: str = "knowledge",
+) -> None:
     """以適合人閱讀的格式顯示主題資料。"""
-    data = get_topic_data(category, item)
+    data = get_topic_data(category, item, source=source)
 
     print()
     print("=" * 55)
@@ -78,6 +89,7 @@ def search_main(
     random_result: bool = False,
     tree_view: bool = False,
     open_topic: bool = False,
+    source: str = "knowledge",
 ) -> None:
     """搜尋分類、主題與知識內容。"""
     original_keyword = keyword.strip()
@@ -110,7 +122,7 @@ def search_main(
         )
         return
     
-    all_categories = get_categories()
+    all_categories = get_categories(source=source)
 
     if category_filter is not None:
         matching_categories = [
@@ -144,7 +156,7 @@ def search_main(
             exact=exact,
         )
 
-        for item in get_items(category):
+        for item in get_items(category, source=source):
             topic_key = (category, item)
 
             item_matches = text_matches(
@@ -163,7 +175,7 @@ def search_main(
                 continue
 
             try:
-                records = get_topic_data(category, item)
+                records = get_topic_data(category, item, source=source)
             except KeyError:
                 continue
 
@@ -442,8 +454,50 @@ def search_main(
             ]
 
             # 顯示這個主題的全部資料，
-            # 不只是符合搜尋字詞的資料
-            print_topic_text(category, item)
+            # 不只是符合搜尋字詞的資料。
+            #
+            # 課程資料必須使用課程文章顯示器，不能把完整顯示路徑
+            # 當成一般知識庫主題重新查詢。
+            selected_source = (
+                "curriculum"
+                if (
+                    source == "curriculum"
+                    or (
+                        source == "all"
+                        and category.startswith("課程 /")
+                    )
+                )
+                else "knowledge"
+            )
+
+            if selected_source == "curriculum":
+                from .curriculum_adapter import (
+                    get_curriculum_lesson_article,
+                )
+
+                article = get_curriculum_lesson_article(
+                    category,
+                    item,
+                )
+                recommendations = (
+                    get_curriculum_search_recommendations(
+                        category,
+                        item,
+                        article,
+                        limit=5,
+                    )
+                )
+                print_curriculum_lesson_article(
+                    article,
+                    recommendations,
+                )
+            else:
+                print_topic_text(
+                    category,
+                    item,
+                    source="knowledge",
+                )
+
             return
     if json_output:
         output = {
@@ -744,6 +798,428 @@ def today_main() -> None:
     print(f"今日知識推薦：{today.isoformat()}")
     print("=" * 55)
     print_topic_text(category, item)
+from typing import Iterable
+
+def collect_all_records() -> list[dict]:
+    """收集資料庫中的所有知識紀錄，並補上分類與主題名稱。"""
+    all_records: list[dict] = []
+
+    for category in get_categories():
+        for item in get_items(category):
+            try:
+                records = get_topic_data(category, item)
+            except KeyError:
+                continue
+
+            for record in records:
+                scan_record = dict(record)
+                scan_record["category"] = category
+                scan_record["topic"] = item
+                all_records.append(scan_record)
+
+    return all_records
+def _normalize_scan_text(value: object) -> str:
+    """將值轉成適合比對的文字。"""
+    if value is None:
+        return ""
+
+    return str(value).strip()
+
+SCAN_IGNORED_CONCEPTS = {
+    "已知", "未知", "判斷", "說明", "敘述", "問題", "結果",
+    "答案", "原因", "表示", "比較", "之後", "之前", "產生",
+    "形成", "進行", "發生", "活動", "環境", "影響", "增加",
+    "減少", "降低", "提高", "主要", "一般", "通常", "可能",
+    "容易", "可以", "利用", "使用", "根據", "依照", "下列",
+    "上述", "其中", "因此", "所以", "因為", "以及", "並且",
+    "同時", "另外", "正確", "錯誤", "是否", "屬於", "請問",
+    "求出", "合理", "較高", "較低", "沒有", "不是", "不一定",
+    "不代表", "介紹",
+}
+
+
+SCAN_PREFIXES = (
+    "進行",
+    "利用",
+    "透過",
+    "藉由",
+    "經由",
+    "使用",
+    "採用",
+    "具有",
+    "屬於",
+    "可",
+    "可以",
+    "可能",
+    "容易",
+    "主要",
+)
+
+SCAN_SUFFIXES = (
+    "增加",
+    "減少",
+    "降低",
+    "提高",
+    "形成",
+    "產生",
+    "發生",
+    "改變",
+    "作用",
+    "現象",
+    "功能",
+    "用途",
+    "原因",
+    "方法",
+    "過程",
+)
+
+def _normalize_scan_concept(concept: str) -> str:
+    """將候選概念做正規化，避免把整句當概念。"""
+
+    concept = concept.strip()
+
+    changed = True
+    while changed:
+        changed = False
+
+        for prefix in SCAN_PREFIXES:
+            if concept.startswith(prefix) and len(concept) > len(prefix) + 1:
+                concept = concept[len(prefix):].strip()
+                changed = True
+
+        for suffix in SCAN_SUFFIXES:
+            if concept.endswith(suffix) and len(concept) > len(suffix) + 1:
+                concept = concept[:-len(suffix)].strip()
+                changed = True
+
+    return concept
+def collect_scan_topics(
+    *,
+    source: str = "knowledge",
+) -> list[dict]:
+    """整理所有主題及其可供掃描比對的關鍵詞。"""
+    scan_topics: list[dict] = []
+
+    for category in get_categories(source=source):
+        for item in get_items(category, source=source):
+            try:
+                records = get_topic_data(category, item, source=source)
+            except KeyError:
+                continue
+
+            terms: set[str] = set()
+
+            normalized_item = _normalize_scan_concept(
+                _normalize_scan_text(item)
+            )
+
+            if normalized_item:
+                terms.add(normalized_item)
+
+            for record in records:
+                for field in ("code_a", "code_b"):
+                    term = _normalize_scan_text(
+                        record.get(field)
+                    )
+                    term = _normalize_scan_concept(term)
+
+                    if not term:
+                        continue
+
+                    terms.add(term)
+
+            scan_topics.append(
+                {
+                    "category": category,
+                    "item": item,
+                    "terms": terms,
+                }
+            )
+
+    return scan_topics
+def scan_text_for_topics(
+    text: str,
+    scan_topics: list[dict],
+    *,
+    minimum_length: int = 2,
+) -> list[dict]:
+    """掃描文字並回傳命中的知識主題。"""
+    original_text = text.strip()
+    normalized_text = original_text.casefold()
+
+    if not normalized_text:
+        return []
+
+    matched_topics: list[dict] = []
+
+    for topic in scan_topics:
+        matched_terms: list[str] = []
+
+        for raw_term in topic["terms"]:
+            term = _normalize_scan_concept(
+                _normalize_scan_text(raw_term)
+            )
+
+            if len(term) < minimum_length:
+                continue
+
+            if term in SCAN_IGNORED_CONCEPTS:
+                continue
+
+            if term.casefold() in normalized_text:
+                matched_terms.append(term)
+
+        if not matched_terms:
+            continue
+
+        unique_terms = sorted(
+            set(matched_terms),
+            key=lambda value: (
+                -len(value),
+                value,
+            ),
+        )
+
+        matched_topics.append(
+            {
+                "category": topic["category"],
+                "item": topic["item"],
+                "matched_terms": unique_terms,
+                "score": sum(
+                    len(term)
+                    for term in unique_terms
+                ),
+            }
+        )
+
+    matched_topics.sort(
+        key=lambda topic: (
+            -topic["score"],
+            -len(topic["matched_terms"]),
+            topic["category"],
+            topic["item"],
+        )
+    )
+
+    return matched_topics
+
+def print_scan_topic_result(
+    text: str,
+    matched_topics: list[dict],
+    *,
+    as_json: bool = False,
+) -> None:
+    """顯示文字掃描命中的主題。"""
+    if as_json:
+        print(
+            json.dumps(
+                {
+                    "text": text,
+                    "topic_count": len(matched_topics),
+                    "topics": [
+                        {
+                            "category": topic["category"],
+                            "item": topic["item"],
+                            "matched_terms": (
+                                topic["matched_terms"]
+                            ),
+                        }
+                        for topic in matched_topics
+                    ],
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return
+
+    print()
+    print("=" * 55)
+    print("文字主題掃描")
+    print("=" * 55)
+    print(f"輸入文字：{text}")
+    print()
+
+    if not matched_topics:
+        print("找不到與這段文字相關的知識主題。")
+        print("=" * 55)
+        return
+
+    print("【命中的主題】")
+
+    for index, topic in enumerate(
+        matched_topics,
+        start=1,
+    ):
+        matched_preview = "、".join(
+            topic["matched_terms"][:4]
+        )
+
+        print(
+            f"{index}. "
+            f'{topic["category"]} / {topic["item"]}'
+        )
+
+        if matched_preview:
+            print(f"   命中內容：{matched_preview}")
+
+    print()
+    print(f"主題數量：{len(matched_topics)}")
+    print("=" * 55)
+
+def interactive_scan_main(
+    *,
+    minimum_length: int = 2,
+    source: str = "knowledge",
+) -> None:
+    """重複掃描文字，並允許直接開啟命中的主題。"""
+    scan_topics = collect_scan_topics(source=source)
+
+    exit_commands = {
+        "0",
+        "q",
+        "quit",
+        "exit",
+        "結束",
+        "離開",
+        "不要查了",
+    }
+
+    print()
+    print("=" * 55)
+    print("KnowpareX 互動式主題掃描")
+    print("=" * 55)
+    print("輸入一段文字，系統會找出相關知識主題。")
+    print("輸入 0、q、quit、exit、結束或離開即可停止。")
+    print("=" * 55)
+
+    while True:
+        try:
+            text = input(
+                "\n請輸入要掃描的文字（輸入 0 結束）："
+            ).strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\n已結束主題掃描。")
+            return
+
+        if text.casefold() in exit_commands:
+            print("已結束主題掃描。")
+            return
+
+        if not text:
+            print("請輸入文字，不可以空白。")
+            continue
+
+        matched_topics = scan_text_for_topics(
+            text,
+            scan_topics,
+            minimum_length=minimum_length,
+        )
+
+        print_scan_topic_result(
+            text,
+            matched_topics,
+            as_json=False,
+        )
+
+        if not matched_topics:
+            continue
+
+        while True:
+            choice = input(
+                "\n要開啟其中的主題嗎？\n"
+                "輸入編號，或按 Enter 繼續掃描："
+            ).strip()
+
+            if choice == "":
+                break
+
+            if choice.casefold() in exit_commands:
+                print("已結束主題掃描。")
+                return
+
+            try:
+                selected_index = int(choice)
+            except ValueError:
+                print("請輸入有效編號，或直接按 Enter。")
+                continue
+
+            if not 1 <= selected_index <= len(
+                matched_topics
+            ):
+                print("編號超出範圍。")
+                continue
+
+            selected_topic = matched_topics[
+                selected_index - 1
+            ]
+
+            print_topic_text(
+                selected_topic["category"],
+                selected_topic["item"],
+                source=source,
+            )
+
+            again = input(
+                "\n還要開啟其他命中的主題嗎？\n"
+                "輸入 y 繼續，其他內容返回掃描："
+            ).strip().casefold()
+
+            if again in {"y", "yes", "是", "要"}:
+                print("\n【命中的主題】")
+
+                for index, topic in enumerate(
+                    matched_topics,
+                    start=1,
+                ):
+                    print(
+                        f"{index}. "
+                        f'{topic["category"]} / '
+                        f'{topic["item"]}'
+                    )
+
+                continue
+
+            break
+
+def scan_main(
+    text: str | None,
+    *,
+    minimum_length: int = 2,
+    json_output: bool = False,
+    source: str = "knowledge",
+) -> None:
+    """執行單次主題掃描，或進入互動模式。"""
+    if minimum_length < 1:
+        print("--min-length 必須大於 0。")
+        return
+
+    if text is None:
+        if json_output:
+            print("--json 必須搭配一段要掃描的文字。")
+            return
+
+        interactive_scan_main(
+            minimum_length=minimum_length,
+            source=source,
+        )
+        return
+
+    scan_topics = collect_scan_topics(source=source)
+
+    matched_topics = scan_text_for_topics(
+        text,
+        scan_topics,
+        minimum_length=minimum_length,
+    )
+
+    print_scan_topic_result(
+        text,
+        matched_topics,
+        as_json=json_output,
+    )
+
+
 def record_to_sentence(record: dict) -> str:
     """將一筆關係資料轉成自然語句。"""
     relation = str(record.get("relation", "")).strip()
@@ -1055,6 +1531,465 @@ def related_main(
         print(f"  共同內容：{preview_terms}")
 
     print("=" * 55)
+
+def curriculum_subjects_main() -> None:
+    """列出課程資料中的科目。"""
+    from .curriculum_adapter import get_subjects
+
+    for subject in get_subjects():
+        print(f'{subject["key"]}\t{subject["name"]}')
+
+
+def curriculum_books_main(
+    subject: str,
+    *,
+    stage: str | None = None,
+) -> None:
+    """列出指定科目的冊別。"""
+    from .curriculum_adapter import get_books
+
+    books = get_books(subject, stage=stage)
+
+    if not books:
+        print("找不到符合條件的冊別。")
+        return
+
+    for book in books:
+        print(
+            f'{book["stage"]}\t'
+            f'{book["subject"]}\t'
+            f'{book["book"]}'
+        )
+
+
+def curriculum_units_main(
+    subject: str,
+    book: str,
+    *,
+    stage: str | None = None,
+) -> None:
+    """列出指定冊別中的單元。"""
+    from .curriculum_adapter import get_units
+
+    units = get_units(subject, book, stage=stage)
+
+    if not units:
+        print("找不到符合條件的單元。")
+        return
+
+    for unit in units:
+        print(unit["unit"])
+
+
+
+
+CURRICULUM_RECOMMENDATION_IGNORED_TERMS = RECOMMENDATION_STOPWORDS
+
+
+def _recommendation_terms(article: dict) -> list[tuple[str, int, str]]:
+    """Return (term, weight, origin) without generic prose words."""
+    values: list[tuple[str, int, str]] = []
+
+    title = str(article.get("title", "")).strip()
+    if title:
+        values.append((title, 16, "title"))
+
+    for point in article.get("key_points", []) or []:
+        topic = str(point.get("topic", "")).strip()
+        if topic:
+            values.append((topic, 12, "key_point"))
+
+    for formula in article.get("formulas", []) or []:
+        formula_text = str(formula).strip()
+        if not formula_text:
+            continue
+
+        # A formula label before the colon is intentional metadata.  Words
+        # occurring later may only be connective prose and are not candidates.
+        label = re.split(r"[：:]", formula_text, maxsplit=1)[0].strip()
+        if 2 <= len(label) <= 16 and re.search(r"[\u4e00-\u9fff]", label):
+            values.append((label, 7, "formula"))
+
+    terms: list[tuple[str, int, str]] = []
+    seen: set[str] = set()
+
+    for value, weight, origin in values:
+        normalized = value.casefold().strip()
+
+        if (
+            len(normalized) < 2
+            or normalized in CURRICULUM_RECOMMENDATION_IGNORED_TERMS
+            or normalized in BROAD_CONCEPT_TERMS
+            or normalized in seen
+        ):
+            continue
+
+        seen.add(normalized)
+        terms.append((value.strip(), weight, origin))
+
+    return terms
+
+
+def _topic_search_concepts(
+    category: str,
+    item: str,
+    records: list[dict],
+) -> set[str]:
+    """Build concepts from names and compact records, never full lesson prose."""
+    values = [category, item, item.rsplit("/", 1)[-1].strip()]
+
+    for record in records:
+        language_a = str(record.get("language_a", ""))
+        language_b = str(record.get("language_b", ""))
+        for field, language in (
+            ("code_a", language_a),
+            ("code_b", language_b),
+        ):
+            value = str(record.get(field, "")).strip()
+            if not value or language in {"課文", "解釋", "例子"}:
+                continue
+            if len(value) <= 48:
+                values.append(value)
+            elif language == "公式或規則":
+                values.extend(re.findall(r"[\u4e00-\u9fff]{2,12}", value))
+
+    concepts: set[str] = set()
+    for value in values:
+        normalized = normalize_for_compare(value)
+        if (
+            len(normalized) >= 2
+            and normalized not in RECOMMENDATION_STOPWORDS
+            and normalized not in BROAD_CONCEPT_TERMS
+        ):
+            concepts.add(normalized)
+        concepts.update(
+            normalize_for_compare(term)
+            for term in concept_terms(value)
+            if term not in RECOMMENDATION_STOPWORDS
+            and term not in BROAD_CONCEPT_TERMS
+        )
+    return {value for value in concepts if len(value) >= 2}
+
+
+def get_curriculum_search_recommendations(
+    current_category: str,
+    current_item: str,
+    article: dict,
+    *,
+    limit: int = 5,
+) -> list[dict]:
+    """
+    根據課程名稱、重點知識與公式概念，推薦其他可搜尋主題。
+
+    同時搜尋原本知識庫與課程資料，排除目前課程及重複結果。
+    """
+    terms = _recommendation_terms(article)
+    if not terms:
+        return []
+
+    candidates: list[dict] = []
+    seen_topics: set[tuple[str, str, str]] = set()
+
+    current_subject = current_category.rsplit("/", 1)[-1].strip().casefold()
+    current_book = current_item.rsplit("/", 1)[0].strip().casefold()
+    current_basename = normalize_for_compare(
+        current_item.rsplit("/", 1)[-1].strip()
+    )
+
+    for source in ("knowledge", "curriculum"):
+        try:
+            categories = get_categories(source=source)
+        except (KeyError, ValueError):
+            continue
+
+        for category in categories:
+            try:
+                items = get_items(category, source=source)
+            except KeyError:
+                continue
+
+            for item in items:
+                if (
+                    source == "curriculum"
+                    and category == current_category
+                    and item == current_item
+                ):
+                    continue
+
+                unique_key = (source, category, item)
+                if unique_key in seen_topics:
+                    continue
+                seen_topics.add(unique_key)
+
+                try:
+                    records = get_topic_data(
+                        category,
+                        item,
+                        source=source,
+                    )
+                except (KeyError, ValueError):
+                    continue
+
+                candidate_concepts = _topic_search_concepts(
+                    category,
+                    item,
+                    records,
+                )
+                item_text = normalize_for_compare(item)
+                basename = normalize_for_compare(
+                    item.rsplit("/", 1)[-1].strip()
+                )
+                if basename == current_basename:
+                    continue
+                candidate_subject = category.rsplit(
+                    "/", 1
+                )[-1].strip().casefold()
+                candidate_book = item.rsplit(
+                    "/", 1
+                )[0].strip().casefold()
+
+                matched_terms: list[str] = []
+                score = 0
+
+                for term, weight, origin in terms:
+                    normalized = normalize_for_compare(term)
+
+                    if basename == normalized:
+                        score += weight + 4
+                        matched_terms.append(term)
+                    elif len(normalized) >= 3 and normalized in basename:
+                        score += weight
+                        matched_terms.append(term)
+                    elif len(basename) >= 3 and basename in normalized:
+                        score += max(4, weight - 4)
+                        matched_terms.append(term)
+                    elif normalized in candidate_concepts:
+                        score += weight
+                        matched_terms.append(term)
+                    elif origin != "formula" and normalized in item_text:
+                        score += max(4, weight - 5)
+                        matched_terms.append(term)
+
+                if not matched_terms:
+                    continue
+
+                if (
+                    source == "curriculum"
+                    and category == current_category
+                ):
+                    score += 4
+                    if candidate_book == current_book:
+                        score += 3
+
+                if candidate_subject != current_subject:
+                    score -= 6
+
+                # A candidate must have a strong concept match after penalties;
+                # one accidental broad word is never enough.
+                if score < 7:
+                    continue
+
+                candidates.append({
+                    "score": score,
+                    "source": source,
+                    "category": category,
+                    "item": item,
+                    "matched_terms": list(dict.fromkeys(matched_terms)),
+                })
+
+    candidates.sort(
+        key=lambda value: (
+            -value["score"],
+            0 if value["source"] == "knowledge" else 1,
+            value["category"],
+            value["item"],
+        )
+    )
+
+    results: list[dict] = []
+    used_display_names: set[str] = set()
+
+    for candidate in candidates:
+        display_name = candidate["item"].rsplit("/", 1)[-1].strip()
+
+        # 同名結果只保留分數最高的一筆，避免推薦清單重複。
+        normalized_name = display_name.casefold()
+        if normalized_name in used_display_names:
+            continue
+
+        used_display_names.add(normalized_name)
+        candidate["display_name"] = display_name
+        results.append(candidate)
+
+        if len(results) >= limit:
+            break
+
+    return results
+
+
+def print_curriculum_search_recommendations(
+    recommendations: list[dict],
+) -> None:
+    """顯示課程文章後的推薦搜尋。"""
+    if not recommendations:
+        return
+
+    print("【推薦搜尋】")
+    print()
+
+    for index, recommendation in enumerate(
+        recommendations,
+        start=1,
+    ):
+        display_name = recommendation["display_name"]
+        source = recommendation["source"]
+        category = recommendation["category"]
+        item = recommendation["item"]
+        matched_terms = "、".join(
+            recommendation["matched_terms"][:3]
+        )
+
+        source_name = (
+            "知識庫"
+            if source == "knowledge"
+            else "課程"
+        )
+
+        print(f"{index}. {display_name}")
+        print(f"   來源：{source_name}")
+        print(f"   位置：{category} / {item}")
+
+        if matched_terms:
+            print(f"   相關概念：{matched_terms}")
+
+        print(
+            f'   搜尋：knowparex search "{display_name}" '
+            f'--source {source}'
+        )
+        print()
+
+
+def print_curriculum_lesson_article(
+    article: dict,
+    recommendations: list[dict] | None = None,
+) -> None:
+    """以接近課本文章的格式顯示課程內容。"""
+    title = str(article.get("title", "")).strip()
+    stage = str(article.get("stage", "")).strip()
+    subject = str(article.get("subject", "")).strip()
+    book = str(article.get("book", "")).strip()
+
+    print()
+    print("=" * 55)
+    print(title)
+    print("=" * 55)
+
+    location = " / ".join(
+        value
+        for value in (stage, subject, book)
+        if value
+    )
+    if location:
+        print(location)
+        print()
+
+    paragraphs = article.get("paragraphs", []) or []
+    formulas = article.get("formulas", []) or []
+    key_points = article.get("key_points", []) or []
+    examples = article.get("examples", []) or []
+
+    for paragraph in paragraphs:
+        text = str(paragraph).strip()
+        if text:
+            print(text)
+            print()
+
+    if key_points:
+        print("【重點知識】")
+        print()
+
+        for index, point in enumerate(key_points, start=1):
+            topic = str(point.get("topic", "")).strip()
+            explanation = str(
+                point.get("explanation", "")
+            ).strip()
+            heading = topic or f"重點 {index}"
+            print(f"{index}. {heading}")
+
+            if explanation:
+                print(explanation)
+
+            print()
+
+    if formulas:
+        print("【公式與規則】")
+        print()
+
+        for formula in formulas:
+            text = str(formula).strip()
+            if text:
+                print(f"- {text}")
+
+        print()
+
+    if examples:
+        print("【例子】")
+        print()
+
+        for example in examples:
+            text = str(example).strip()
+            if text:
+                print(f"- {text}")
+
+        print()
+
+    if not paragraphs and not key_points and not formulas and not examples:
+        print("這個單元目前沒有可顯示的教材內容。")
+        print()
+
+    print_curriculum_search_recommendations(
+        recommendations or [],
+    )
+
+    print("=" * 55)
+
+
+def curriculum_lesson_main(
+    subject: str,
+    book: str,
+    unit: str,
+    *,
+    stage: str | None = None,
+) -> None:
+    """以課本文章格式顯示一個課程單元。"""
+    from .curriculum_adapter import (
+        find_curriculum_topic,
+        get_curriculum_lesson_article,
+    )
+
+    category, item = find_curriculum_topic(
+        subject,
+        book,
+        unit,
+        stage=stage,
+    )
+
+    article = get_curriculum_lesson_article(
+        category,
+        item,
+    )
+    recommendations = get_curriculum_search_recommendations(
+        category,
+        item,
+        article,
+        limit=5,
+    )
+    print_curriculum_lesson_article(
+        article,
+        recommendations,
+    )
+
+
 def compare_main() -> None:
     print("=" * 55)
     print("KnowpareX / Steve 知識資料庫")
@@ -1109,6 +2044,60 @@ def main() -> None:
 
     subparsers = parser.add_subparsers(dest="command")
 
+    curriculum_parser = subparsers.add_parser(
+        "curriculum",
+        help="瀏覽 MindLeapX 課程資料",
+    )
+    curriculum_subparsers = curriculum_parser.add_subparsers(
+        dest="curriculum_command",
+        required=True,
+    )
+
+    curriculum_subparsers.add_parser(
+        "subjects",
+        help="列出全部課程科目",
+    )
+
+    books_parser = curriculum_subparsers.add_parser(
+        "books",
+        help="列出指定科目的冊別",
+    )
+    books_parser.add_argument("subject", help="科目，例如 math、數學")
+    books_parser.add_argument(
+        "--stage",
+        "--category",
+        dest="stage",
+        help="可選學制：國小、國中、高中",
+    )
+
+    units_parser = curriculum_subparsers.add_parser(
+        "units",
+        help="列出指定冊別的單元",
+    )
+    units_parser.add_argument("subject", help="科目，例如 math、數學")
+    units_parser.add_argument("book", help="冊別，例如 高一上")
+    units_parser.add_argument(
+        "--stage",
+        "--category",
+        dest="stage",
+        help="可選學制：國小、國中、高中",
+    )
+
+    lesson_parser = curriculum_subparsers.add_parser(
+        "lesson",
+        help="顯示指定單元教材",
+    )
+    lesson_parser.add_argument("subject", help="科目，例如 math、數學")
+    lesson_parser.add_argument("book", help="冊別，例如 高一上")
+    lesson_parser.add_argument("unit", help="單元，例如 函數")
+    lesson_parser.add_argument(
+        "--stage",
+        "--category",
+        dest="stage",
+        help="可選學制：國小、國中、高中",
+    )
+
+
     subparsers.add_parser(
         "compare",
         help="互動式查詢與比較",
@@ -1150,6 +2139,12 @@ def main() -> None:
     search_parser.add_argument(
         "keyword",
         help="搜尋關鍵字",
+    )
+    search_parser.add_argument(
+        "--source",
+        choices=("knowledge", "curriculum", "all"),
+        default="knowledge",
+        help="資料來源；預設只搜尋原本知識庫",
     )
 
     search_parser.add_argument(
@@ -1281,7 +2276,35 @@ def main() -> None:
         dest="random_result",
         help="隨機顯示一筆符合的知識紀錄",
     )
+    scan_parser = subparsers.add_parser(
+        "scan",
+        help="掃描一段文字並列出其中命中的知識概念",
+    )
 
+    scan_parser.add_argument(
+        "text",
+        nargs="?",
+        help="要掃描的文字；省略時進入互動模式",
+    )
+    scan_parser.add_argument(
+        "--source",
+        choices=("knowledge", "curriculum", "all"),
+        default="knowledge",
+        help="資料來源；預設只掃描原本知識庫",
+    )
+
+    scan_parser.add_argument(
+        "--min-length",
+        type=int,
+        default=2,
+        help="概念最少字元數，預設為 2",
+    )
+
+    scan_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="以 JSON 格式輸出",
+    )
     search_parser.add_argument(
         "--tree",
         action="store_true",
@@ -1297,7 +2320,29 @@ def main() -> None:
     args = parser.parse_args()
 
     try:
-        if args.command is None or args.command == "compare":
+        if args.command == "curriculum":
+            if args.curriculum_command == "subjects":
+                curriculum_subjects_main()
+            elif args.curriculum_command == "books":
+                curriculum_books_main(
+                    args.subject,
+                    stage=args.stage,
+                )
+            elif args.curriculum_command == "units":
+                curriculum_units_main(
+                    args.subject,
+                    args.book,
+                    stage=args.stage,
+                )
+            elif args.curriculum_command == "lesson":
+                curriculum_lesson_main(
+                    args.subject,
+                    args.book,
+                    args.unit,
+                    stage=args.stage,
+                )
+
+        elif args.command is None or args.command == "compare":
             compare_main()
 
         elif args.command == "practice":
@@ -1354,6 +2399,13 @@ def main() -> None:
             
             else:
                 print_topic_text(args.category, args.item)
+        elif args.command == "scan":
+            scan_main(
+                args.text,
+                minimum_length=args.min_length,
+                json_output=args.json,
+                source=args.source,
+            )
         elif args.command == "search":
             search_main(
                 args.keyword,
@@ -1368,6 +2420,7 @@ def main() -> None:
                 random_result=args.random_result,
                 tree_view=args.tree,
                 open_topic=args.open_topic,
+                source=args.source,
             )
     except KeyError as error:
         parser.error(str(error))

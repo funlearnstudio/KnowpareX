@@ -18,6 +18,11 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, TextIO
 
+try:
+    from .curriculum_quality import organize_lesson
+except ImportError:  # Support direct script execution.
+    from curriculum_quality import organize_lesson
+
 
 SUBJECT_NAMES = {
     "chinese": "國文",
@@ -249,6 +254,7 @@ def unit_to_knowparex(unit: Dict[str, Any]) -> Dict[str, Any]:
     category -> topic -> records
     """
     details = unit.get("lesson_details", {}) or {}
+    organized = organize_lesson(details, unit["unit"])
     category = "%s / %s" % (unit["stage"], unit["subject"])
     topic = "%s / %s" % (unit["book"], unit["unit"])
     records: List[Dict[str, Any]] = []
@@ -266,7 +272,7 @@ def unit_to_knowparex(unit: Dict[str, Any]) -> Dict[str, Any]:
     for value in details.get("smallFocus", []):
         _append_record(records, unit["unit"], "學習重點", value, "small_focus")
 
-    for value in details.get("formulas", []):
+    for value in organized["formulas"]:
         _append_record(records, unit["unit"], "公式或規則", value, "formula")
 
     for value in details.get("learningObjectives", []):
@@ -275,16 +281,13 @@ def unit_to_knowparex(unit: Dict[str, Any]) -> Dict[str, Any]:
     for value in details.get("mustKnow", []):
         _append_record(records, value, "是本單元必會內容", unit["unit"], "must_know")
 
-    for point in details.get("keyPoints", []):
+    for point in organized["key_points"]:
         point_topic = point.get("topic") or unit["unit"]
         _append_record(
             records, point_topic, "定義為", point.get("explanation"), "explanation"
         )
         _append_record(
             records, point_topic, "是……的例子", point.get("example"), "example"
-        )
-        _append_record(
-            records, point_topic, "常見錯誤", point.get("commonTrap"), "common_trap"
         )
 
     for value in details.get("examFocus", []):
@@ -299,11 +302,7 @@ def unit_to_knowparex(unit: Dict[str, Any]) -> Dict[str, Any]:
     for value in details.get("outputSkills", []):
         _append_record(records, unit["unit"], "學完後能做到", value, "output_skill")
 
-    for paragraph in (
-        details.get("readableLesson")
-        or details.get("lessonText")
-        or []
-    ):
+    for paragraph in organized["paragraphs"]:
         _append_record(records, unit["unit"], "教材內容", paragraph, "lesson_text")
 
     # 在單元內去重，保留原順序。
@@ -358,17 +357,17 @@ def export_jsonl(
 
 def print_lesson(unit: Dict[str, Any]) -> None:
     details = unit.get("lesson_details", {}) or {}
+    organized = organize_lesson(details, unit["unit"])
 
     print("=" * 60)
     print("%s / %s / %s" % (unit["subject"], unit["book"], unit["unit"]))
     print("=" * 60)
 
-    lesson = details.get("readableLesson") or details.get("lessonText") or []
-    for paragraph in lesson:
+    for paragraph in organized["paragraphs"]:
         print(paragraph)
         print()
 
-    key_points = details.get("keyPoints", [])
+    key_points = organized["key_points"]
     if key_points:
         print("【重點】")
         for index, point in enumerate(key_points, 1):
@@ -377,8 +376,10 @@ def print_lesson(unit: Dict[str, Any]) -> None:
                 print("   解釋：%s" % point["explanation"])
             if point.get("example"):
                 print("   例子：%s" % point["example"])
-            if point.get("commonTrap"):
-                print("   易錯：%s" % point["commonTrap"])
+    if organized["formulas"]:
+        print("\n【公式與規則】")
+        for value in organized["formulas"]:
+            print("- %s" % value)
 
     if details.get("examFocus"):
         print("\n【考試重點】")

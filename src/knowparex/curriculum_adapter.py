@@ -30,6 +30,13 @@ from importlib import resources
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
+from .curriculum_quality import (
+    clean_text,
+    clean_key_points,
+    dedupe_texts,
+    organize_lesson,
+)
+
 
 SUBJECT_NAMES = {
     "chinese": "國文",
@@ -256,13 +263,11 @@ def _record(
 
 def _clean_text(value: Any) -> str:
     """Normalize curriculum text without changing its meaning."""
-    if value is None:
-        return ""
-    return str(value).strip()
+    return clean_text(value)
 
 
 def _clean_text_list(value: Any) -> List[str]:
-    """Return a de-duplicated list of non-empty strings."""
+    """Return a normalized, similarity-aware list of non-empty strings."""
     if isinstance(value, str):
         values = [value]
     elif isinstance(value, list):
@@ -270,17 +275,7 @@ def _clean_text_list(value: Any) -> List[str]:
     else:
         values = []
 
-    result: List[str] = []
-    seen = set()
-
-    for item in values:
-        text = _clean_text(item)
-        if not text or text in seen:
-            continue
-        seen.add(text)
-        result.append(text)
-
-    return result
+    return dedupe_texts(values)
 
 
 def _meaningful_key_points(details: Dict[str, Any]) -> List[Dict[str, str]]:
@@ -290,26 +285,7 @@ def _meaningful_key_points(details: Dict[str, Any]) -> List[Dict[str, str]]:
     Metadata, exam templates, generic study advice, licensing notes,
     and curriculum hierarchy are intentionally excluded.
     """
-    result: List[Dict[str, str]] = []
-
-    for point in details.get("keyPoints", []) or []:
-        if not isinstance(point, dict):
-            continue
-
-        topic = _clean_text(point.get("topic"))
-        explanation = _clean_text(point.get("explanation"))
-        example = _clean_text(point.get("example"))
-
-        if not topic and not explanation and not example:
-            continue
-
-        result.append({
-            "topic": topic,
-            "explanation": explanation,
-            "example": example,
-        })
-
-    return result
+    return clean_key_points(details.get("keyPoints", []))
 
 
 def get_curriculum_lesson_article(
@@ -344,14 +320,11 @@ def get_curriculum_lesson_article(
 
     details = unit["lesson_details"]
 
-    paragraphs = _clean_text_list(
-        details.get("readableLesson")
-        or details.get("lessonText")
-        or []
-    )
-
-    formulas = _clean_text_list(details.get("formulas", []))
-    key_points = _meaningful_key_points(details)
+    organized = organize_lesson(details, unit["unit"])
+    paragraphs = organized["paragraphs"]
+    formulas = organized["formulas"]
+    key_points = organized["key_points"]
+    examples = organized["examples"]
 
     # Some units may have useful objectives but no actual lesson paragraphs.
     # Use objectives only as a final fallback, not as a normal article section.
@@ -368,6 +341,7 @@ def get_curriculum_lesson_article(
         "paragraphs": paragraphs,
         "formulas": formulas,
         "key_points": key_points,
+        "examples": examples,
     }
 
 
@@ -410,12 +384,13 @@ def get_curriculum_topic_data(category: str, item: str) -> List[Dict[str, str]]:
                 "解釋",
             )
 
+    for point in article["key_points"]:
         if point["example"]:
             add(
                 "是……的例子",
                 point["example"],
                 "例子",
-                topic,
+                point["topic"] or title,
                 "知識重點",
             )
 
