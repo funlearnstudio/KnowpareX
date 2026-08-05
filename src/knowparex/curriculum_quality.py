@@ -554,6 +554,16 @@ def semantic_issues(subject: str, title: str, details: Dict[str, Any]) -> List[s
             r"平均變化率(?:就是|等於)導數", text
         ):
             issues.append("math:average_rate_as_derivative")
+        if "畢氏" in title and re.search(r"非直角三角形.{0,12}(?:套用|使用).{0,8}(?:勾股|畢氏)", text):
+            issues.append("math:pythagorean_non_right_triangle")
+        if "相似" in title and re.search(r"相似(?:形|三角形)?(?:就是|等同|必為)全等", text):
+            issues.append("math:similarity_as_congruence")
+        if ("機率" in title or "資料" in title) and re.search(r"頻率(?:就是|等同|必為)理論機率", text):
+            issues.append("math:frequency_as_theoretical_probability")
+        if ("平方根" in title or "根式" in title) and not all(
+            term in text for term in ("實數", "非負", "分母")
+        ):
+            issues.append("math:radical_domain_missing")
 
     organized = organize_lesson(details, title)
     # ``quality_issues`` uses conservative lexical token overlap.  Compound

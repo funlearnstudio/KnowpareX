@@ -313,6 +313,23 @@ class CurriculumQualityTests(unittest.TestCase):
                 details=copy.deepcopy(base); details["readableLesson"][0]+=bad; details["lessonText"]=list(details["readableLesson"])
                 self.assertIn(expected,semantic_issues("math",title,details))
 
+    def test_junior_high_math_units_are_fully_rewritten(self) -> None:
+        checked=0
+        for subject,book,unit in self.iter_units():
+            if subject!="math" or book.get("stage")!="junior_high": continue
+            d=unit["lessonDetails"]
+            self.assertEqual([],semantic_issues("math",unit["name"],d),unit["name"])
+            self.assertEqual(2,len(d["readableLesson"]));self.assertGreaterEqual(len(d["keyPoints"]),3)
+            self.assertTrue(all(all(p.get(k) for k in ("topic","explanation","example","commonTrap")) for p in d["keyPoints"]));checked+=1
+        self.assertEqual(36,checked)
+
+    def test_junior_high_math_concept_regressions(self) -> None:
+        checks={"整數與數線":("正負數","|-7|=7"),"因數倍數與分數運算":("整數指數律","2⁷=128"),"一元一次方程式":("x=5",),"二元一次聯立方程式":("(4,3)",),"比與比例式":("正比例","反比例","x≠0"),"線型函數":("斜率",),"平方根與畢氏定理":("實數","非負","直角三角形","=10"),"因式分解":("(x-2)(x-3)",),"一元二次方程式":("a≠0","解2、3"),"二次函數":("拋物線","a≠0"),"相似形入門":("對應角相等","對應邊","全等"),"圓周角與切線":("圓周角","切線","60°"),"統計與盒狀圖":("中位數3","IQR"),"機率初步":("0≤P(A)≤1","理論機率"),}
+        data={u["name"]:str(u["lessonDetails"]) for s,b,u in self.iter_units() if s=="math" and b.get("stage")=="junior_high"}
+        for title,terms in checks.items():
+            with self.subTest(title=title):
+                for term in terms:self.assertIn(term,data[title])
+
 
 if __name__ == "__main__":
     unittest.main()
