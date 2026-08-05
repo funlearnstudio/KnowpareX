@@ -1,91 +1,159 @@
 # 🍐 KnowpareX
 
 <p align="center">
-  <img
-    src="LOGO.png"
-    width="180"
-    alt="KnowpareX pear logo"
-  >
+  <img src="LOGO.png" width="180" alt="KnowpareX Logo">
 </p>
-Why a pear?<br>
-KnowpareX comes from<br>
-Knowledge + Compare + X.<br>
 
-The name sounds like "pear",<br>
-so a pear became its mascot.<br>
+<p align="center">
 
-> **Connect. Compare. Understand.**  
-> **連結、比較、理解。**
+**Connect. Compare. Understand.**  
+**連結、比較、理解。**
 
-A structured knowledge database and query toolkit for Python.
+*A structured knowledge database and learning toolkit for Python.*
 
-一個可重複使用的 Python 套件，以知識關係為核心，包含程式語言比較、高中學科資料、查詢介面與資料收集功能。<br>
-Think of it as a searchable knowledge database for Python.<br>
-可以把它想成一個可搜尋的 Python 知識資料庫。
+**一套以結構化知識為核心的 Python 學習與查詢工具。**
 
-## Who is this for? / 適合誰？
+</p>
 
-- 🎓 Students reviewing concepts
-- 👨‍🏫 Teachers building educational tools
-- 💻 Python developers creating learning applications
-- 📚 Anyone who needs structured knowledge lookup
+---
 
-## Features / 特色
-Current Features:
+# 📖 About / 關於 KnowpareX
 
-✓ **71** categories<br>
-✓ **1678** registered topics<br>
-✓ **6871** knowledge relations<br>
-✓ Python API<br>
-✓ CLI<br>
-✓ JSON output<br>
-✓ High-school subjects<br>
-✓ Programming comparisons<br>
+KnowpareX is a reusable Python package for structured knowledge management.
 
-## Quick Start / 快速開始
-```python
-from knowparex import get_topic_data
+It combines a searchable knowledge database, curriculum resources, relationship-based learning, and command-line tools into one package.
 
-data = get_topic_data("有機化學", "醇")
-print(data)
-```
-## Documentation／完整文件
+Whether you're reviewing science, comparing programming languages, or building educational applications, KnowpareX provides a simple and consistent way to organize and query knowledge.
 
-For complete commands, APIs, relationship functions, and registered topics, see:
+KnowpareX 是一套可重複使用的 Python 套件。
 
-完整指令、API、關係函式與資料分類，請參考：
+它整合了：
 
-[`KNOWPAREX_API_GUIDE.md`](KNOWPAREX_API_GUIDE.md)
+- 📚 結構化知識資料庫
+- 🎓 MindLeapX 課程資料
+- 🔍 關鍵字搜尋
+- 🌳 關係式知識模型
+- 🖥 命令列工具（CLI）
+- 🐍 Python API
+- 🎯 練習、複習與比較工具
 
-## Example Applications / 範例檔案
+無論是學生學習、教師開發教材，或是開發教育軟體，都可以快速整合 KnowpareX。
 
-[`COMPARE TOOL`](examples/TOOL.COMPARE.py)
-[`PRACTICE TOOL`](examples/TOOL.PRACTICE.py)
-[`REVIEW TOOL`](examples/TOOL.REVIEW.py)
+---
 
-## Install / 安裝
+# ✨ Features / 功能特色
 
-### Windows
+## 📚 Knowledge Database / 知識資料庫
 
-Install using Python:
+- Structured knowledge database
+- Relationship-based knowledge model
+- High-school subject database
+- Programming language comparisons
+- Searchable topics
+- JSON output
 
-```powershell
-py -m pip install knowparex
+- 結構化知識資料庫
+- 關係式知識模型
+- 高中學科資料
+- 程式語言比較
+- 主題搜尋
+- JSON 輸出
+
+---
+
+## 🎓 Curriculum Database / 課程資料
+
+- MindLeapX curriculum database
+- Subject browser
+- Book browser
+- Unit browser
+- Lesson viewer
+
+- MindLeapX 課程資料
+- 科目瀏覽
+- 冊別瀏覽
+- 單元瀏覽
+- 教材閱讀
+
+---
+
+## 🔍 Search / 搜尋
+
+- Keyword search
+- Concept scanner
+- Interactive search
+- Tree view
+- Summary mode
+- JSON export
+
+- 關鍵字搜尋
+- 文字概念掃描
+- 互動式搜尋
+- Tree 模式
+- Summary 模式
+- JSON 匯出
+
+---
+
+## 🎯 Learning Tools / 學習工具
+
+- Practice mode
+- Review mode
+- Compare mode
+- Wrong-answer tracking
+
+- 練習模式
+- 複習模式
+- 比較模式
+- 錯題追蹤
+
+---
+
+## 🐍 Python Library / Python 套件
+
+- Python API
+- Reusable modules
+- Structured data
+- Easy integration
+
+- Python API
+- 可重複使用模組
+- 結構化資料
+- 容易整合到自己的專案
+
+---
+
+# 📊 Current Database / 目前資料庫
+
+Current version includes:
+
+目前版本包含：
+
+- **71 Categories**
+- **1678 Registered Topics**
+- **6871 Knowledge Relations**
+
+資料內容持續更新中。
+
+---
+
+# 🚀 Installation / 安裝
+
+Install from PyPI:
+
+從 PyPI 安裝：
+
+```bash
+pip install knowparex
 ```
 
 or
-
-```powershell
-python -m pip install knowparex
-```
-
-### macOS / Linux
 
 ```bash
 python3 -m pip install knowparex
 ```
 
-For editable development mode:
+Development mode：
 
 ```bash
 python3 -m pip install -e .
@@ -93,217 +161,184 @@ python3 -m pip install -e .
 
 ---
 
-### Verify installation / 確認安裝
+# ⚡ Quick Start / 快速開始
 
-```bash
-knowparex categories
+Python
+
+```python
+from knowparex import get_topic_data
+
+data = get_topic_data("有機化學", "醇")
+
+print(data)
 ```
 
-If the installation is successful, you should see all available categories.
+Command Line
 
-如果安裝成功，會顯示所有分類。
+```bash
+knowparex search "歐姆定律"
+```
 
 ---
 
-### Windows troubleshooting / Windows 常見問題
+# 🖥 Command Line Tools / 命令列工具
 
-If you see:
+KnowpareX provides several built-in command-line tools.
 
-```text
-'knowparex' is not recognized as an internal or external command
-```
+KnowpareX 內建多種命令列工具。
 
-try:
-
-- Restart Command Prompt or PowerShell.
-- Make sure Python is installed correctly.
-- Ensure Python's **Scripts** directory is added to your `PATH`.
-
-如果出現：
+### Knowledge / 知識庫
 
 ```text
-'knowparex' 不是內部或外部命令，也不是可執行的程式或批次檔。
+categories
+items
+topic
 ```
 
-請嘗試：
+### Search / 搜尋
 
-- 重新開啟 PowerShell 或命令提示字元。
-- 確認 Python 已安裝。
-- 確認 Python 的 **Scripts** 資料夾已加入 `PATH`。
-
-## Import / 匯入
-
-```python
-from knowparex import (
-    library,
-    compare_system,
-    get_categories,
-    get_items,
-    get_topic_data,
-    topic_exists,
-)
+```text
+search
+scan
 ```
 
-## Examples / 範例
+### Curriculum / 課程資料
 
-```python
-from knowparex import get_categories, get_items, get_topic_data
-
-print(get_categories())
-print(get_items("電學"))
-
-data = get_topic_data("電學", "歐姆定律")
-for record in data:
-    print(record)
+```text
+curriculum subjects
+curriculum books
+curriculum units
+curriculum lesson
 ```
 
-Direct function call:
+### Learning / 學習工具
 
-```python
-from knowparex import library
-
-library["國文文學常識"]["唐宋八大家"]()
+```text
+practice
+review
+compare
 ```
 
-## Command line / 命令列
+Standalone launchers are also available.
 
-```bash
-knowparex --categories
-knowparex --items 電學
-knowparex --topic 電學 歐姆定律
-knowparex-compare
-knowparex topic "有機化學" "醇" --json
-knowparex search "電學"
-```
-## 文字概念掃描
+另外也提供獨立啟動指令：
 
-KnowpareX 提供 `scan` 命令，可以從一段文字中找出已收錄於知識庫的概念。
-
-這個功能不會回答問題，也不會自動解釋整段文字；它會將輸入內容與 KnowpareX 資料庫中的分類、主題及知識欄位進行比對，並列出命中的概念。
-
-### 互動式掃描
-
-直接執行：
-
-```bash
-knowparex scan
-knowparex scan "流汗時汗水蒸發會吸收汽化潛熱"
-```
-可能輸出：
-```
-=======================================================
-文字概念掃描
-=======================================================
-輸入文字：流汗時汗水蒸發會吸收汽化潛熱
-
-【命中的概念】
-1. 流汗
-2. 汗水蒸發
-3. 汽化潛熱
-
-概念數量：3
-=======================================================
-```
-## Public API / 使用者介面
-
-- `library` — central category and item registry
-- `compare_system` — relationship functions and data collector
-- `get_categories()` — list category names
-- `get_items(category)` — list items in a category
-- `get_topic_data(category, item)` — return structured topic records
-- `topic_exists(category, item)` — check whether a topic exists
-
-## Add new data / 新增資料
-
-1. Add a note module under `src/knowparex/PROGRAMMING_NOTES` or `SUBJECT_NOTES`.
-2. Use functions from `compare_system`.
-3. Import the class in `system_library.py`.
-4. Register the function in `library` without parentheses.
-
-```python
-"電學": {
-    "歐姆定律": physics_electricity.ohms_law,
-}
-```
-## 📚 Curriculum（課程資料）
-
-KnowpareX 現在支援瀏覽 MindLeapX 課程資料。
-
-> **注意：課程資料與一般知識資料分開管理。**
->
-> 預設搜尋、掃描仍使用 KnowpareX 知識庫，不會混合課程資料。
-
-### 查看科目
-
-```bash
-knowparex curriculum subjects
-```
-
-### 查看某科冊別
-
-```bash
-knowparex curriculum books math
-```
-
-### 查看冊別中的單元
-
-```bash
-knowparex curriculum units math 高一上
-```
-
-### 查看教材
-
-```bash
-knowparex curriculum lesson math 高一上 "實數與絕對值"
-```
-
-## 🔍 搜尋資料來源
-
-預設：
-
-```bash
-knowparex search "函數"
-```
-
-只搜尋 KnowpareX 知識庫。
-
-只搜尋課程：
-
-```bash
-knowparex search "函數" --source curriculum
-```
-
-搜尋全部：
-
-```bash
-knowparex search "函數" --source all
-```
-## License / 授權
-
-- Original Python source code: MIT License (`LICENSE-CODE`)
-- Original educational content: CC BY-NC-SA 4.0 (`LICENSE-CONTENT`)
-- Third-party material keeps its original rights.
-
-原創 Python 程式碼採 MIT License；原創學科內容採 CC BY-NC-SA 4.0。第三方內容仍受原權利條款約束。
-
-## Built-in command-line tools／內建命令列工具
-
-After installation, the tools can be started from any directory. No separate example file is required.
-安裝後可在任何資料夾直接啟動，不需要另外複製範例程式。
-
-```bash
-knowparex compare
-knowparex practice
-knowparex review
-```
-
-Short standalone commands are also available:
-
-```bash
-knowparex-compare
+```text
 knowparex-practice
 knowparex-review
+knowparex-compare
 ```
 
-Wrong answers are saved in the current user's application-data directory, so they remain available even when the command is run from another folder.<br>
-錯題會儲存在目前使用者的應用程式資料目錄，因此從其他資料夾執行時仍可繼續複習。
+---
+
+# 📚 Curriculum Database / 課程資料
+
+KnowpareX includes the MindLeapX curriculum database.
+
+KnowpareX 內建 MindLeapX 課程資料。
+
+Curriculum data is managed separately from the knowledge database.
+
+課程資料與一般知識資料分開管理。
+
+You can browse：
+
+可以瀏覽：
+
+- Subjects（科目）
+- Books（冊別）
+- Units（單元）
+- Lessons（教材）
+
+Search and Scan also support：
+
+搜尋與掃描同時支援：
+
+- Knowledge Database
+- Curriculum Database
+- Both Databases
+
+- 一般知識資料
+- 課程資料
+- 同時搜尋兩者
+
+---
+
+# 📂 Example Applications / 範例程式
+
+Included examples:
+
+內建範例：
+
+- Compare Tool
+- Practice Tool
+- Review Tool
+
+---
+
+# 📖 Documentation / 完整文件
+
+Complete documentation:
+
+完整技術文件：
+
+```text
+KNOWPAREX_API_GUIDE.md
+```
+
+Includes：
+
+包含：
+
+- Python API
+- Command Line Guide
+- Relationship Functions
+- Data Structure
+- Registered Topics
+- Developer Guide
+
+- Python API
+- CLI 指令
+- 關係函式
+- 資料結構
+- 全部主題
+- 開發者指南
+
+---
+
+# 👨‍💻 Who is this for? / 適合誰？
+
+KnowpareX is designed for:
+
+適合：
+
+- 🎓 Students（學生）
+- 👨‍🏫 Teachers（教師）
+- 💻 Python Developers（Python 開發者）
+- 📚 Educational Projects（教育專案）
+- 🧠 Knowledge Management（知識管理）
+- 🤖 Learning Applications（學習應用）
+
+---
+
+# 📄 License / 授權
+
+- Python source code → MIT License
+- Original educational content → CC BY-NC-SA 4.0
+- Third-party content keeps its original license.
+
+- Python 程式碼採 MIT License
+- 原創教材內容採 CC BY-NC-SA 4.0
+- 第三方內容維持原授權
+
+---
+
+# ❤️ Philosophy / 理念
+
+> **Connect knowledge. Compare ideas. Build understanding.**
+
+> **讓知識彼此連結，透過比較建立真正的理解。**
+
+KnowpareX aims to make knowledge reusable, searchable, and easy to integrate into educational software.
+
+KnowpareX 致力於打造一套可重複使用、可搜尋、可整合的知識系統，讓知識不只是閱讀，而是真正能夠被理解、比較與應用。
