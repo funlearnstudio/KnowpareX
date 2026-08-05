@@ -226,14 +226,66 @@ def search_main(
         print(f'找不到與「{original_keyword}」相關的內容。')
         return
 
-    sorted_topics = sorted(
-        matched_topics,
-        key=lambda topic: (
+    def _search_bigrams(value: object) -> set[str]:
+        normalized = re.sub(
+            r"[^0-9a-z\u4e00-\u9fff]+",
+            "",
+            str(value).casefold(),
+        )
+        if len(normalized) < 2:
+            return {normalized} if normalized else set()
+        return {
+            normalized[index:index + 2]
+            for index in range(len(normalized) - 1)
+        }
+
+    query_bigrams = _search_bigrams(original_keyword)
+
+    def _topic_relevance(topic: tuple[str, str]) -> tuple:
+        category, item = topic
+        normalized_item = item.casefold().strip()
+        item_bigrams = _search_bigrams(item)
+        overlap = len(query_bigrams & item_bigrams)
+        union = len(query_bigrams | item_bigrams) or 1
+        title_similarity = overlap / union
+        record_count = len(grouped_records.get(topic, []))
+
+        if normalized_item == normalized_keyword:
+            title_score = 1000
+        elif normalized_keyword in normalized_item:
+            title_score = 850
+        elif normalized_item in normalized_keyword:
+            title_score = 700
+        else:
+            title_score = int(title_similarity * 600)
+
+        return (
+            -(title_score + min(record_count, 10) * 5),
             topic not in direct_topic_matches,
-            topic[0],
-            topic[1],
-        ),
-    )
+            category,
+            item,
+        )
+
+    sorted_topics = sorted(matched_topics, key=_topic_relevance)
+
+    # ``--open`` is for choosing the intended topic, not browsing every unit
+    # whose long article happens to contain the query.  When a title-related
+    # result exists, hide zero-title-similarity record-only noise.
+    if open_topic:
+        title_related = []
+        for topic in sorted_topics:
+            item_bigrams = _search_bigrams(topic[1])
+            overlap = len(query_bigrams & item_bigrams)
+            union = len(query_bigrams | item_bigrams) or 1
+            similarity = overlap / union
+            if (
+                topic in direct_topic_matches
+                or normalized_keyword in topic[1].casefold()
+                or similarity >= 0.20
+            ):
+                title_related.append(topic)
+        if title_related:
+            sorted_topics = title_related[:20]
 
     category_topics: dict[str, set[str]] = defaultdict(set)
     category_record_counts: dict[str, int] = defaultdict(int)
