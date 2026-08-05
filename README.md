@@ -270,9 +270,9 @@ Included examples:
 
 內建範例：
 
-- Compare Tool
-- Practice Tool
-- Review Tool
+- [Compare Tool](examples/TOOL.COMPARE.py)
+- [Practice Tool](examples/TOOL.PRACTICE.py)
+- [Review Tool](examples/TOOL.REVIEW.py)
 
 ---
 
@@ -282,9 +282,8 @@ Complete documentation:
 
 完整技術文件：
 
-```text
-KNOWPAREX_API_GUIDE.md
-```
+
+[KNOWPAREX_API_GUIDE.md](KNOWPAREX_API_GUIDE.md)
 
 Includes：
 
