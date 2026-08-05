@@ -1,16 +1,29 @@
-# KnowpareX 1.1.0 完整函式庫與使用指南
+# KnowpareX 完整技術文件與使用指南
 
-> 適用版本：`knowparex 1.1.0`  
+> 適用版本：整合「原本知識庫＋MindLeapX 課程資料」功能後的版本  
 > 作者：Steve Lin／林炫銓  
-> 這份文件整理套件的安裝方式、命令列工具、Python API、關係函式、資料儲存函式，以及目前註冊的全部分類與項目。
+> 這份文件完整整理安裝方式、命令列工具、資料來源切換、課程資料功能、Python API、關係函式、錯題儲存，以及目前註冊的全部分類與項目。
+
+## 本版重點
+
+- 保留原本 KnowpareX 的全部知識庫、搜尋、掃描、練習、錯題複習、匯出與關係函式。
+- 新增 MindLeapX 課程資料瀏覽功能。
+- 原本知識庫與課程資料預設分開，不會自動混合。
+- `search` 與 `scan` 可用 `--source` 選擇資料來源。
+- 新增 `curriculum subjects`、`books`、`units`、`lesson` 指令。
+- 課程資料檔由套件內部自動載入，使用者不需要輸入檔案路徑。
 
 ---
 
 ## 目錄
 
-1. [安裝與更新](#1-安裝與更新)
+1. [安裝、更新與發布資料檔](#1-安裝更新與發布資料檔)
 2. [最短使用範例](#2-最短使用範例)
 3. [命令列指令](#3-命令列指令)
+   - [資料來源規則](#資料來源規則)
+   - [課程資料指令](#課程資料指令)
+   - [搜尋](#search--搜尋)
+   - [文字概念掃描](#文字概念掃描)
 4. [主要 Python API](#4-主要-python-api)
 5. [library 中央資料庫](#5-library-中央資料庫)
 6. [compare_system 資料控制](#6-compare_system-資料控制)
@@ -22,9 +35,10 @@
 12. [錯題資料儲存 API](#12-錯題資料儲存-api)
 13. [完整程式範例](#13-完整程式範例)
 14. [目前全部分類與項目](#14-目前全部分類與項目)
+15. [常見問題與故障排除](#15-常見問題與故障排除)
 
 ---
-# 1. 安裝與更新
+# 1. 安裝、更新與發布資料檔
 
 ## 從 PyPI 安裝
 
@@ -117,6 +131,39 @@ import knowparex
 
 print(knowparex.__version__)
 ```
+
+
+## 發布版本必須包含課程資料檔
+
+課程功能會自動讀取套件內的：
+
+```text
+knowparex/data/curriculum_integrated.js
+```
+
+使用者不需要輸入 `--file`，也不需要知道實際路徑。
+
+若使用 `setuptools`，請確認 `pyproject.toml` 包含：
+
+```toml
+[tool.setuptools.package-data]
+knowparex = ["data/*.js"]
+```
+
+建議另外加入 `MANIFEST.in`：
+
+```text
+recursive-include src/knowparex/data *.js
+```
+
+建立套件後，可檢查 wheel 是否包含課程資料：
+
+```bash
+python3 -m build
+unzip -l dist/*.whl | grep curriculum_integrated.js
+```
+
+如果看不到 `knowparex/data/curriculum_integrated.js`，發布到 PyPI 後課程功能將找不到資料。
 ---
 
 # 2. 最短使用範例
@@ -179,6 +226,40 @@ KnowpareX 提供 `scan` 命令，可以從一段文字中找出已收錄於知�
 
 ```bash
 knowparex scan
+```
+
+只使用課程資料：
+
+```bash
+knowparex scan --source curriculum
+```
+
+同時使用兩種資料：
+
+```bash
+knowparex scan --source all
+```
+
+### 單次掃描
+
+```bash
+knowparex scan "流汗時汗水蒸發會吸收汽化潛熱"
+```
+
+指定課程資料：
+
+```bash
+knowparex scan "絕對值表示數在線上與零的距離" --source curriculum
+```
+
+可搭配：
+
+```text
+--source       knowledge、curriculum 或 all
+--min-length   最短概念字數，預設 2
+--json         以 JSON 輸出
+```
+
 ## 練習／測驗
 
 ```bash
@@ -221,6 +302,106 @@ knowparex items "電學"
 knowparex topic "電學" "歐姆定律"
 knowparex topic "有機化學" "醇" --json
 ```
+## 資料來源規則
+
+KnowpareX 目前有三種資料來源：
+
+| 值 | 說明 |
+|---|---|
+| `knowledge` | 原本的 KnowpareX 知識庫，為預設值 |
+| `curriculum` | MindLeapX 課程資料 |
+| `all` | 同時使用兩種資料來源 |
+
+預設行為不會混合資料：
+
+```bash
+knowparex search "函數"
+knowparex scan "函數"
+```
+
+以上只使用 `knowledge`。
+
+指定課程資料：
+
+```bash
+knowparex search "函數" --source curriculum
+knowparex scan "函數" --source curriculum
+```
+
+只有明確指定時才合併：
+
+```bash
+knowparex search "函數" --source all
+knowparex scan "函數" --source all
+```
+
+## 課程資料指令
+
+課程資料依照「學制 → 科目 → 冊別 → 單元」整理。
+
+### 列出全部科目
+
+```bash
+knowparex curriculum subjects
+```
+
+輸出包含科目代碼與中文名稱，例如：
+
+```text
+math    數學
+chinese 國文
+physics 物理
+```
+
+### 列出指定科目的冊別
+
+```bash
+knowparex curriculum books math
+```
+
+可選擇限制學制：
+
+```bash
+knowparex curriculum books math --stage 高中
+```
+
+`--category` 是 `--stage` 的別名：
+
+```bash
+knowparex curriculum books math --category 高中
+```
+
+### 列出冊別中的單元
+
+```bash
+knowparex curriculum units math 高一上
+```
+
+建議在可能重名時加上學制：
+
+```bash
+knowparex curriculum units math 高一上 --stage 高中
+```
+
+### 顯示教材
+
+```bash
+knowparex curriculum lesson math 高一上 函數 --stage 高中
+```
+
+單元名稱可使用部分關鍵字。若同時符合多個單元，程式會要求輸入更完整名稱或補上 `--stage`。
+
+### 指令格式總覽
+
+```text
+knowparex curriculum subjects
+knowparex curriculum books <科目> [--stage <學制>]
+knowparex curriculum units <科目> <冊別> [--stage <學制>]
+knowparex curriculum lesson <科目> <冊別> <單元> [--stage <學制>]
+```
+
+> `curriculum` 和後面的 `subjects`、`books`、`units`、`lesson` 都是子指令，不能任意省略。
+
 ## Search / 搜尋
 
 KnowpareX can search category names, topic names, and all structured knowledge records.
@@ -231,6 +412,18 @@ KnowpareX 可以搜尋分類名稱、主題名稱，以及所有結構化知識�
 
 ```bash
 knowparex search "能量"
+```
+
+只搜尋課程資料：
+
+```bash
+knowparex search "能量" --source curriculum
+```
+
+同時搜尋兩種資料：
+
+```bash
+knowparex search "能量" --source all
 ```
 
 The default search checks:
@@ -518,6 +711,7 @@ Related topics are estimated from shared text and knowledge fields. The result i
 Available search options:
 
 ```text
+--source        Select knowledge, curriculum, or all
 --summary       Show only the summary and matching topics
 --exact         Match complete field contents only
 --topic-only    Search category and topic names only
@@ -535,6 +729,7 @@ Available search options:
 ```
 
 ```text
+--source    選擇 knowledge、curriculum 或 all
 --count     只顯示搜尋統計
 --random    隨機顯示一筆符合紀錄
 --tree      以分類樹狀結構顯示主題
@@ -552,96 +747,40 @@ knowparex --help
 ```
 
 ---
-# 使用者說明書新增章節
-
-# 課程資料功能
-
-課程資料來自 MindLeapX 的教材資料庫。
-
-目前包含：
-
-- 國小
-- 國中
-- 高中
-- 多個科目
-- 冊別
-- 單元
-
-## 常用指令
-
-### 科目
-
-```bash
-knowparex curriculum subjects
-```
-
-### 冊別
-
-```bash
-knowparex curriculum books math
-```
-
-### 單元
-
-```bash
-knowparex curriculum units math 高一上
-```
-
-### 教材
-
-```bash
-knowparex curriculum lesson math 高一上 "實數與絕對值"
-```
-
-## 資料來源
-
-KnowpareX 有三種資料來源：
-
-- knowledge（預設知識庫）
-- curriculum（課程資料）
-- all（兩者一起）
-
-因此：
-
-```bash
-knowparex scan "牛頓第二定律"
-```
-
-不會自動掃描課程。
-
-若需要：
-
-```bash
-knowparex scan "牛頓第二定律" --source curriculum
-```
-
-或：
-
-```bash
-knowparex scan "牛頓第二定律" --source all
-```
 
 # 4. 主要 Python API
 
-## `get_categories() -> list[str]`
+## `get_categories(source="knowledge") -> list[str]`
 
-取得全部分類名稱。
+取得指定資料來源的全部分類名稱。
+
+- `knowledge`：原本知識庫
+- `curriculum`：課程資料
+- `all`：兩者合併
 
 ```python
 from knowparex import get_categories
 
 for category in get_categories():
     print(category)
+
+for category in get_categories(source="curriculum"):
+    print(category)
 ```
 
-## `get_items(category: str) -> list[str]`
+## `get_items(category: str, source="knowledge") -> list[str]`
 
-取得指定分類中的全部項目。
+取得指定資料來源與分類中的全部項目。
 
 ```python
 from knowparex import get_items
 
 items = get_items("電學")
+
+course_items = get_items(
+    "課程 / 高中 / 數學",
+    source="curriculum",
+)
 
 for item in items:
     print(item)
@@ -656,9 +795,9 @@ except KeyError as error:
     print(error)
 ```
 
-## `get_topic_data(category: str, item: str) -> list[dict]`
+## `get_topic_data(category: str, item: str, source="knowledge") -> list[dict]`
 
-執行一個知識函式，並取得其關係資料。
+取得指定資料來源中的主題關係資料。原本知識庫會執行註冊函式；課程資料則由課程轉接器動態產生相同紀錄格式。
 
 ```python
 from knowparex import get_topic_data
@@ -692,9 +831,9 @@ for record in get_topic_data("電學", "歐姆定律"):
     )
 ```
 
-## `topic_exists(category: str, item: str) -> bool`
+## `topic_exists(category: str, item: str, source="knowledge") -> bool`
 
-確認分類與項目是否存在。
+確認指定資料來源中的分類與項目是否存在。
 
 ```python
 from knowparex import topic_exists
@@ -714,6 +853,82 @@ if topic_exists(category, item):
     print(get_topic_data(category, item))
 else:
     print("找不到主題")
+```
+
+---
+
+## 課程資料 Python API
+
+這些函式位於：
+
+```python
+from knowparex.curriculum_adapter import (
+    get_subjects,
+    get_books,
+    get_units,
+    find_curriculum_topic,
+    get_curriculum_categories,
+    get_curriculum_items,
+    get_curriculum_topic_data,
+)
+```
+
+### `get_subjects()`
+
+列出全部課程科目代碼與中文名稱。
+
+```python
+for subject in get_subjects():
+    print(subject["key"], subject["name"])
+```
+
+### `get_books(subject, stage=None)`
+
+列出指定科目的冊別。
+
+```python
+books = get_books("math", stage="高中")
+```
+
+### `get_units(subject, book, stage=None)`
+
+列出指定冊別中的單元。
+
+```python
+units = get_units("math", "高一上", stage="高中")
+```
+
+### `find_curriculum_topic(subject, book, unit, stage=None)`
+
+依科目、冊別與單元關鍵字找出 KnowpareX 使用的課程分類與項目名稱。
+
+```python
+category, item = find_curriculum_topic(
+    "math",
+    "高一上",
+    "函數",
+    stage="高中",
+)
+```
+
+### `get_curriculum_topic_data(category, item)`
+
+取得課程單元的結構化關係紀錄。
+
+```python
+records = get_curriculum_topic_data(category, item)
+```
+
+課程紀錄仍使用 KnowpareX 的統一格式：
+
+```python
+{
+    "relation": "關係名稱",
+    "code_a": "左側內容",
+    "language_a": "左側標籤",
+    "code_b": "右側內容",
+    "language_b": "右側標籤",
+}
 ```
 
 ---
@@ -3093,3 +3308,93 @@ Path("ohms_law.json").write_text(
 ```text
 KNOWPAREX_API_GUIDE.md
 ```
+
+---
+
+# 15. 常見問題與故障排除
+
+## `knowparex curriculum` 顯示無效指令
+
+先確認目前安裝的是包含新版 `cli.py` 的版本：
+
+```bash
+knowparex --help
+knowparex curriculum --help
+```
+
+若正在開發專案，重新以可編輯模式安裝：
+
+```bash
+python3 -m pip install -e .
+```
+
+## 找不到 `curriculum_integrated.js`
+
+確認檔案存在：
+
+```text
+src/knowparex/data/curriculum_integrated.js
+```
+
+並確認 `pyproject.toml` 已設定：
+
+```toml
+[tool.setuptools.package-data]
+knowparex = ["data/*.js"]
+```
+
+## `NameError: SCAN_IGNORED_CONCEPTS is not defined`
+
+代表 `cli.py` 的掃描排除詞集合缺失。新版 `cli.py` 必須在掃描函式之前定義：
+
+```python
+SCAN_IGNORED_CONCEPTS = {
+    "已知",
+    "未知",
+    "問題",
+    "答案",
+    "原因",
+    "表示",
+    "比較",
+}
+```
+
+正式版本可以包含更多常見泛用詞，以避免掃描結果過度雜亂。
+
+## 搜尋結果混入不想要的資料
+
+預設只使用原本知識庫：
+
+```bash
+knowparex search "函數"
+```
+
+明確指定課程：
+
+```bash
+knowparex search "函數" --source curriculum
+```
+
+只有需要時才使用：
+
+```bash
+knowparex search "函數" --source all
+```
+
+## 課程教材找到多個結果
+
+加入學制或使用更完整的單元名稱：
+
+```bash
+knowparex curriculum lesson math 高一上 "多項式函數" --stage 高中
+```
+
+## 查看完整指令
+
+```bash
+knowparex --help
+knowparex search --help
+knowparex scan --help
+knowparex curriculum --help
+```
+
