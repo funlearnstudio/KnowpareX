@@ -230,6 +230,50 @@ class CurriculumQualityTests(unittest.TestCase):
                 for term in forbidden:
                     self.assertNotIn(term, text)
 
+    def test_high_school_chemistry_units_are_fully_rewritten(self) -> None:
+        expected = {
+            "物質組成與分類", "原子結構", "週期表與元素性質", "化學鍵", "莫耳與化學計量", "溶液與濃度", "化學反應式", "生活中的化學",
+            "氣體與溶液", "反應熱", "反應速率", "化學平衡", "酸鹼平衡", "氧化還原", "電化學", "實驗與誤差",
+            "有機化學入門", "烴與官能基", "醇醛酸酯", "高分子材料", "環境化學", "材料化學", "化學素養題", "分科化學總複習",
+        }
+        seen = set()
+        for subject, book, unit in self.iter_units():
+            if subject != "chemistry" or book.get("stage") != "high_school":
+                continue
+            details = unit["lessonDetails"]
+            self.assertEqual([], semantic_issues("chemistry", unit["name"], details), unit["name"])
+            self.assertEqual(2, len(details["readableLesson"]))
+            self.assertGreaterEqual(len(details["keyPoints"]), 3)
+            self.assertTrue(all(
+                all(point.get(field) for field in ("topic", "explanation", "example", "commonTrap"))
+                for point in details["keyPoints"]
+            ))
+            seen.add(unit["name"])
+        self.assertEqual(expected, seen)
+
+    def test_high_school_chemistry_concept_regressions(self) -> None:
+        checks = {
+            "莫耳與化學計量": (("莫耳", "6.022×10²³", "限制試劑", "3 mol H₂O"), ("半導體", "污染物")),
+            "氧化還原": (("氧化數", "氧化劑", "還原劑", "電子"), ("pH", "緩衝液")),
+            "電化學": (("原電池", "電解池", "陽極", "陰極", "電子", "1.10 V"), ("歐姆定律", "磁場")),
+            "化學平衡": (("動態平衡", "平衡常數", "反應商", "Q<K"), ("速率方程", "緩衝公式")),
+            "酸鹼平衡": (("共軛酸鹼", "Ka", "pH", "緩衝", "pH=3.00"), ("電池電位", "催化劑降低活化能")),
+            "反應速率": (("反應速率", "碰撞", "活化能", "速率方程", "0.10 M/s"), ("平衡產率", "pH=-log")),
+            "烴與官能基": (("有機官能基", "羥基", "羰基", "羧基", "酯基"), ("半導體摻雜", "酸雨")),
+        }
+        by_title = {
+            unit["name"]: unit["lessonDetails"]
+            for subject, book, unit in self.iter_units()
+            if subject == "chemistry" and book.get("stage") == "high_school"
+        }
+        for title, (required, forbidden) in checks.items():
+            with self.subTest(title=title):
+                text = str(by_title[title])
+                for term in required:
+                    self.assertIn(term, text)
+                for term in forbidden:
+                    self.assertNotIn(term, text)
+
 
 if __name__ == "__main__":
     unittest.main()
