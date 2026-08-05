@@ -345,6 +345,22 @@ class CurriculumQualityTests(unittest.TestCase):
             with self.subTest(title=title):
                 for term in terms:self.assertIn(term,data[title])
 
+    def test_earth_science_all_stages_are_fully_rewritten(self) -> None:
+        counts={"junior_high":0,"high_school":0}
+        for subject,book,unit in self.iter_units():
+            st=book.get("stage")
+            if subject!="earth" or st not in counts:continue
+            d=unit["lessonDetails"];self.assertEqual([],semantic_issues("earth_"+st,unit["name"],d),unit["name"])
+            self.assertEqual(2,len(d["readableLesson"]));self.assertGreaterEqual(len(d["keyPoints"]),3);counts[st]+=1
+        self.assertEqual({"junior_high":6,"high_school":24},counts)
+
+    def test_earth_science_concept_regressions(self) -> None:
+        required={"地球內部與板塊":("地殼","地函","外核","張裂","聚合","錯動"),"板塊構造":("板塊","張裂","聚合","錯動"),"地震與火山":("規模","震度","火山"),"岩石與地質年代":("礦物","岩石循環","地層","化石"),"天氣與氣候":("短時間","長期統計","氣壓","鋒面"),"天氣系統與颱風":("氣壓","鋒面","颱風"),"海洋與氣候":("洋流","潮汐","氣候"),"日月地與太陽系":("月相","地球影子","四季","地軸傾斜","潮汐"),"太陽系":("行星","四季","地日距離"),"恆星與星系":("恆星演化","星系","銀河系"),"宇宙演化":("星系","宇宙尺度","恆星")}
+        data={u["name"]:str(u["lessonDetails"]) for s,b,u in self.iter_units() if s=="earth"}
+        for title,terms in required.items():
+            with self.subTest(title=title):
+                for term in terms:self.assertIn(term,data[title])
+
 
 if __name__ == "__main__":
     unittest.main()

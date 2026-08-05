@@ -482,7 +482,7 @@ TITLE_REQUIRED_TERMS: Dict[str, Tuple[str, ...]] = {
     "遺傳漂變": ("隨機", "族群", "等位基因"),
     "拋物線": ("焦點", "準線", "對稱軸"),
     "限制試劑": ("反應物", "化學計量", "產物"),
-    "板塊": ("板塊", "邊界", "地震"),
+    "板塊": ("板塊", "邊界"),
     "基本測量與密度": ("密度", "質量", "體積"),
     "電流電壓與電阻": ("電流", "電壓", "電阻", "歐姆"),
     "磁場與電磁感應": ("磁場", "感應", "線圈"),
@@ -551,6 +551,20 @@ def semantic_issues(subject: str, title: str, details: Dict[str, Any]) -> List[s
             term in text for term in ("電子傳遞鏈複合體", "組蛋白乙醯化", "RNA剪接體", "Hardy-Weinberg")
         ):
             issues.append("biology:junior_high_overadvanced_mechanism")
+
+    if subject_family == "earth":
+        if "月" in title and re.search(r"月相(?:是|由).{0,8}地球影子", text):
+            issues.append("earth:moon_phase_as_earth_shadow")
+        if any(term in title for term in ("太陽系", "日月地")) and re.search(r"四季(?:是|由).{0,10}地日距離", text):
+            issues.append("earth:season_as_distance")
+        if "地震" in title and re.search(r"(?<!把)規模(?:就是|等於|與).{0,8}震度", text):
+            issues.append("earth:magnitude_intensity_confusion")
+        if "板塊" in title and re.search(r"張裂(?:就是|等同)聚合|聚合(?:就是|等同)錯動", text):
+            issues.append("earth:plate_boundary_confusion")
+        if ("天氣" in title or "氣候" in title) and re.search(r"天氣(?:就是|等同)氣候", text):
+            issues.append("earth:weather_as_climate")
+        if ("岩石" in title or "地質" in title) and re.search(r"(?<!說)板塊移動直接.{0,12}任何岩石", text):
+            issues.append("earth:rock_cycle_plate_causality")
 
     if subject_family == "math":
         if "二次函數" in title and (
