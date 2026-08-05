@@ -182,6 +182,54 @@ class CurriculumQualityTests(unittest.TestCase):
         self.assertIn("cross_subject_term:卡爾文循環", issues)
         self.assertIn("cross_subject_term:葉綠體", issues)
 
+    def test_junior_high_physical_science_units_are_fully_rewritten(self) -> None:
+        expected = {
+            "基本測量與密度", "認識物質", "波動與聲音", "光與成像", "溫度與熱", "物質的變化",
+            "原子分子與反應式", "化學反應與質量守恆", "氧化還原", "酸鹼鹽", "反應速率", "有機物與材料",
+            "力與運動", "功與能", "電流電壓與電阻", "電功率與生活用電", "磁場與電磁感應", "科技與能源",
+        }
+        seen = set()
+        for subject, book, unit in self.iter_units():
+            if subject != "science" or book.get("stage") != "junior_high":
+                continue
+            self.assertIn(unit["name"], expected)
+            semantic_subject = "chemistry" if unit["name"] in {
+                "認識物質", "物質的變化", "原子分子與反應式", "化學反應與質量守恆",
+                "氧化還原", "酸鹼鹽", "反應速率", "有機物與材料",
+            } else "physics"
+            details = unit["lessonDetails"]
+            self.assertEqual([], semantic_issues(semantic_subject, unit["name"], details), unit["name"])
+            self.assertEqual(2, len(details["readableLesson"]))
+            self.assertGreaterEqual(len(details["keyPoints"]), 3)
+            self.assertTrue(all(point.get("example") and point.get("commonTrap") for point in details["keyPoints"]))
+            seen.add(unit["name"])
+        self.assertEqual(expected, seen)
+
+    def test_junior_high_known_pollution_regressions(self) -> None:
+        checks = {
+            "基本測量與密度": (("密度", "質量", "體積", "ρ=m/V"), ("磁極", "電磁感應")),
+            "電流電壓與電阻": (("歐姆定律", "電流", "電壓", "電阻"), ("磁通量", "法拉第")),
+            "電功率與生活用電": (("電功率", "P=VI", "kWh", "用電安全"), ("ρ=m/V", "同名磁極")),
+            "磁場與電磁感應": (("磁場", "線圈", "感應電流"), ("密度", "酸鹼")),
+            "氧化還原": (("氧化數", "電子", "氧化劑", "還原劑"), ("pH", "聚合物")),
+            "酸鹼鹽": (("酸", "鹼", "pH", "中和"), ("反應速率", "氧化劑")),
+            "反應速率": (("速率", "碰撞", "催化劑", "時間"), ("酸鹼", "聚合物")),
+            "原子分子與反應式": (("原子", "分子", "化學式", "配平"), ("反應速率", "酸鹼")),
+        }
+        by_title = {
+            unit["name"]: unit["lessonDetails"]
+            for subject, book, unit in self.iter_units()
+            if subject == "science" and book.get("stage") == "junior_high"
+        }
+        for title, (required, forbidden) in checks.items():
+            with self.subTest(title=title):
+                details = by_title[title]
+                text = str(details)
+                for term in required:
+                    self.assertIn(term, text)
+                for term in forbidden:
+                    self.assertNotIn(term, text)
+
 
 if __name__ == "__main__":
     unittest.main()
