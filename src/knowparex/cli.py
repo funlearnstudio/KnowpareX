@@ -449,11 +449,7 @@ def search_main(
 
             # 顯示這個主題的全部資料，
             # 不只是符合搜尋字詞的資料
-            print_topic_text(
-                category,
-                item,
-                source=source,
-            )
+            print_topic_text(category, item)
             return
     if json_output:
         output = {
@@ -782,66 +778,15 @@ def _normalize_scan_text(value: object) -> str:
     return str(value).strip()
 
 SCAN_IGNORED_CONCEPTS = {
-    "已知",
-    "未知",
-    "判斷",
-    "說明",
-    "敘述",
-    "問題",
-    "結果",
-    "答案",
-    "原因",
-    "表示",
-    "比較",
-    "次數",
-    "之後",
-    "之前",
-    "產生",
-    "形成",
-    "進行",
-    "發生",
-    "活動",
-    "環境",
-    "影響",
-    "增加",
-    "減少",
-    "降低",
-    "提高",
-    "主要",
-    "一般",
-    "通常",
-    "可能",
-    "容易",
-    "可以",
-    "利用",
-    "使用",
-    "根據",
-    "依照",
-    "下列",
-    "上述",
-    "其中",
-    "因此",
-    "所以",
-    "因為",
-    "而且",
-    "以及",
-    "並且",
-    "同時",
-    "另外",
-    "正確",
-    "錯誤",
-    "是否",
-    "屬於",
-    "請問",
-    "求出",
-    "合理",
-    "較高",
-    "較低",
-    "沒有",
-    "不是",
-    "不一定",
-    "不代表",
-    "介紹",
+    "已知", "未知", "判斷", "說明", "敘述", "問題", "結果",
+    "答案", "原因", "表示", "比較", "之後", "之前", "產生",
+    "形成", "進行", "發生", "活動", "環境", "影響", "增加",
+    "減少", "降低", "提高", "主要", "一般", "通常", "可能",
+    "容易", "可以", "利用", "使用", "根據", "依照", "下列",
+    "上述", "其中", "因此", "所以", "因為", "以及", "並且",
+    "同時", "另外", "正確", "錯誤", "是否", "屬於", "請問",
+    "求出", "合理", "較高", "較低", "沒有", "不是", "不一定",
+    "不代表", "介紹",
 }
 
 
@@ -1588,6 +1533,78 @@ def curriculum_units_main(
         print(unit["unit"])
 
 
+
+def print_curriculum_lesson_article(article: dict) -> None:
+    """以接近課本文章的格式顯示課程內容。"""
+    title = str(article.get("title", "")).strip()
+    stage = str(article.get("stage", "")).strip()
+    subject = str(article.get("subject", "")).strip()
+    book = str(article.get("book", "")).strip()
+
+    print()
+    print("=" * 55)
+    print(title)
+    print("=" * 55)
+
+    location = " / ".join(
+        value
+        for value in (stage, subject, book)
+        if value
+    )
+    if location:
+        print(location)
+        print()
+
+    paragraphs = article.get("paragraphs", []) or []
+    formulas = article.get("formulas", []) or []
+    key_points = article.get("key_points", []) or []
+
+    for paragraph in paragraphs:
+        text = str(paragraph).strip()
+        if text:
+            print(text)
+            print()
+
+    if key_points:
+        print("【重點知識】")
+        print()
+
+        for index, point in enumerate(key_points, start=1):
+            topic = str(point.get("topic", "")).strip()
+            explanation = str(
+                point.get("explanation", "")
+            ).strip()
+            example = str(point.get("example", "")).strip()
+
+            heading = topic or f"重點 {index}"
+            print(f"{index}. {heading}")
+
+            if explanation:
+                print(explanation)
+
+            if example:
+                print(f"例子：{example}")
+
+            print()
+
+    if formulas:
+        print("【公式與規則】")
+        print()
+
+        for formula in formulas:
+            text = str(formula).strip()
+            if text:
+                print(f"- {text}")
+
+        print()
+
+    if not paragraphs and not key_points and not formulas:
+        print("這個單元目前沒有可顯示的教材內容。")
+        print()
+
+    print("=" * 55)
+
+
 def curriculum_lesson_main(
     subject: str,
     book: str,
@@ -1595,8 +1612,11 @@ def curriculum_lesson_main(
     *,
     stage: str | None = None,
 ) -> None:
-    """顯示一個課程單元。"""
-    from .curriculum_adapter import find_curriculum_topic
+    """以課本文章格式顯示一個課程單元。"""
+    from .curriculum_adapter import (
+        find_curriculum_topic,
+        get_curriculum_lesson_article,
+    )
 
     category, item = find_curriculum_topic(
         subject,
@@ -1604,11 +1624,12 @@ def curriculum_lesson_main(
         unit,
         stage=stage,
     )
-    print_topic_text(
+
+    article = get_curriculum_lesson_article(
         category,
         item,
-        source="curriculum",
     )
+    print_curriculum_lesson_article(article)
 
 
 def compare_main() -> None:

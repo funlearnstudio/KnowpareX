@@ -252,7 +252,86 @@ def _record(
     }
 
 
-def get_curriculum_topic_data(category: str, item: str) -> List[Dict[str, str]]:
+
+def _clean_text(value: Any) -> str:
+    """Normalize curriculum text without changing its meaning."""
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def _clean_text_list(value: Any) -> List[str]:
+    """Return a de-duplicated list of non-empty strings."""
+    if isinstance(value, str):
+        values = [value]
+    elif isinstance(value, list):
+        values = value
+    else:
+        values = []
+
+    result: List[str] = []
+    seen = set()
+
+    for item in values:
+        text = _clean_text(item)
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        result.append(text)
+
+    return result
+
+
+def _meaningful_key_points(details: Dict[str, Any]) -> List[Dict[str, str]]:
+    """
+    Keep only actual lesson knowledge.
+
+    Metadata, exam templates, generic study advice, licensing notes,
+    and curriculum hierarchy are intentionally excluded.
+    """
+    result: List[Dict[str, str]] = []
+
+    for point in details.get("keyPoints", []) or []:
+        if not isinstance(point, dict):
+            continue
+
+        topic = _clean_text(point.get("topic"))
+        explanation = _clean_text(point.get("explanation"))
+        example = _clean_text(point.get("example"))
+
+        if not topic and not explanation and not example:
+            continue
+
+        result.append({
+            "topic": topic,
+            "explanation": explanation,
+            "example": example,
+        })
+
+    return result
+
+
+def get_curriculum_lesson_article(
+    category: str,
+    item: str,
+) -> Dict[str, Any]:
+    """
+    Return a curriculum unit as a readable article.
+
+    The result contains only lesson content:
+    - title and minimal location information
+    - lesson paragraphs
+    - formulas or rules
+    - knowledge points and examples
+
+    It intentionally excludes:
+    - hierarchy records
+    - exam-focus templates
+    - generic mistakes
+    - practice templates
+    - output-skill labels
+    - source / copyright / scope metadata
+    """
     _, topics = _index()
 
     try:
@@ -263,6 +342,45 @@ def get_curriculum_topic_data(category: str, item: str) -> List[Dict[str, str]]:
         ) from exc
 
     details = unit["lesson_details"]
+
+    paragraphs = _clean_text_list(
+        details.get("readableLesson")
+        or details.get("lessonText")
+        or []
+    )
+
+    formulas = _clean_text_list(details.get("formulas", []))
+    key_points = _meaningful_key_points(details)
+
+    # Some units may have useful objectives but no actual lesson paragraphs.
+    # Use objectives only as a final fallback, not as a normal article section.
+    if not paragraphs and not key_points:
+        paragraphs = _clean_text_list(
+            details.get("learningObjectives", [])
+        )
+
+    return {
+        "title": unit["unit"],
+        "stage": unit["stage"],
+        "subject": unit["subject"],
+        "book": unit["book"],
+        "paragraphs": paragraphs,
+        "formulas": formulas,
+        "key_points": key_points,
+    }
+
+
+def get_curriculum_topic_data(category: str, item: str) -> List[Dict[str, str]]:
+    """
+    Convert only meaningful curriculum knowledge into KnowpareX records.
+
+    This compact representation is used by search and scan.  The `lesson`
+    command uses `get_curriculum_lesson_article()` instead, so users see a
+    readable textbook-style article rather than dozens of relationship lines.
+    """
+    article = get_curriculum_lesson_article(category, item)
+    title = article["title"]
+
     records: List[Dict[str, str]] = []
 
     def add(
@@ -276,77 +394,42 @@ def get_curriculum_topic_data(category: str, item: str) -> List[Dict[str, str]]:
         if value is not None:
             records.append(value)
 
-    # 三層課程架構
-    add("屬於冊別", unit["unit"], "單元", unit["book"], "冊別")
-    add("屬於科目", unit["book"], "冊別", unit["subject"], "科目")
-    add("屬於學制", unit["subject"], "科目", unit["stage"], "學制")
+    for formula in article["formulas"]:
+        add("計算方式", title, "課程單元", formula, "公式或規則")
 
-    for value in unit.get("topics", []):
-        add("是……的一部分", value, "單元主題", unit["unit"], "單元")
+    for point in article["key_points"]:
+        topic = point["topic"] or title
 
-    for value in details.get("bigIdeas", []):
-        add("核心概念", unit["unit"], "單元", value, "大概念")
+        if point["explanation"]:
+            add(
+                "定義為",
+                topic,
+                "知識重點",
+                point["explanation"],
+                "解釋",
+            )
 
-    for value in details.get("smallFocus", []):
-        add("學習重點", unit["unit"], "單元", value, "小重點")
+        if point["example"]:
+            add(
+                "是……的例子",
+                point["example"],
+                "例子",
+                topic,
+                "知識重點",
+            )
 
-    for value in details.get("formulas", []):
-        add("計算方式", unit["unit"], "單元", value, "公式或規則")
+    for paragraph in article["paragraphs"]:
+        add(
+            "教材內容",
+            title,
+            "課程單元",
+            paragraph,
+            "課文",
+        )
 
-    for value in details.get("learningObjectives", []):
-        add("學習目標", unit["unit"], "單元", value, "目標")
-
-    for value in details.get("mustKnow", []):
-        add("需要", unit["unit"], "單元", value, "必會內容")
-
-    for point in details.get("keyPoints", []):
-        topic = point.get("topic") or unit["unit"]
-        add("定義為", topic, "知識重點", point.get("explanation"), "解釋")
-        add("是……的例子", point.get("example"), "例子", topic, "知識重點")
-        add("常見錯誤", topic, "知識重點", point.get("commonTrap"), "易錯點")
-
-    for value in details.get("examFocus", []):
-        add("考試重點", unit["unit"], "單元", value, "考法")
-
-    for value in details.get("commonMistakes", []):
-        add("常見錯誤", unit["unit"], "單元", value, "易錯點")
-
-    for value in details.get("practiceDesign", []):
-        add("練習方式", unit["unit"], "單元", value, "練習")
-
-    for value in details.get("outputSkills", []):
-        add("學完後能做到", unit["unit"], "單元", value, "能力")
-
-    lesson = details.get("readableLesson") or details.get("lessonText") or []
-    for paragraph in lesson:
-        add("教材內容", unit["unit"], "單元", paragraph, "課文")
-
-    # 保留授權／範圍資訊，但不讓空值進來。
-    add(
-        "內容來源限制",
-        unit["unit"],
-        "單元",
-        details.get("sourceBoundary"),
-        "來源說明",
-    )
-    add(
-        "授權說明",
-        unit["unit"],
-        "單元",
-        details.get("copyrightPolicy"),
-        "授權",
-    )
-    add(
-        "出題範圍限制",
-        unit["unit"],
-        "單元",
-        details.get("antiOverreachRule"),
-        "限制",
-    )
-
-    # 去重
     unique: List[Dict[str, str]] = []
     seen = set()
+
     for value in records:
         key = (
             value["relation"],
