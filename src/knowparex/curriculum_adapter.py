@@ -21,6 +21,7 @@ Python 3.9+
 都會自動看到課程資料。
 """
 
+
 from __future__ import annotations
 
 import json

@@ -1534,7 +1534,254 @@ def curriculum_units_main(
 
 
 
-def print_curriculum_lesson_article(article: dict) -> None:
+
+CURRICULUM_RECOMMENDATION_IGNORED_TERMS = {
+    "單元", "課程", "教材", "內容", "重點", "知識", "概念",
+    "公式", "規則", "方法", "題目", "答案", "條件", "關係",
+    "表示", "說明", "學習", "練習", "計算", "檢查", "合理性",
+    "圖形", "表格", "輸入", "輸出",
+}
+
+
+def _recommendation_terms(article: dict) -> list[str]:
+    """從課程文章擷取適合推薦搜尋的關鍵詞。"""
+    values: list[str] = []
+
+    title = str(article.get("title", "")).strip()
+    if title:
+        values.append(title)
+
+    for point in article.get("key_points", []) or []:
+        topic = str(point.get("topic", "")).strip()
+        if topic:
+            values.append(topic)
+
+    for formula in article.get("formulas", []) or []:
+        formula_text = str(formula).strip()
+        if not formula_text:
+            continue
+
+        # 只擷取公式中的中文概念名稱，不把變數或符號當成推薦詞。
+        values.extend(
+            re.findall(r"[\u4e00-\u9fff]{2,}", formula_text)
+        )
+
+    terms: list[str] = []
+    seen: set[str] = set()
+
+    for value in values:
+        normalized = value.casefold().strip()
+
+        if (
+            len(normalized) < 2
+            or normalized in CURRICULUM_RECOMMENDATION_IGNORED_TERMS
+            or normalized in seen
+        ):
+            continue
+
+        seen.add(normalized)
+        terms.append(value.strip())
+
+    return terms
+
+
+def _topic_search_text(
+    category: str,
+    item: str,
+    records: list[dict],
+) -> str:
+    """建立推薦比對用文字。"""
+    parts = [category, item]
+
+    for record in records:
+        for field in (
+            "relation",
+            "code_a",
+            "language_a",
+            "code_b",
+            "language_b",
+        ):
+            parts.append(str(record.get(field, "")))
+
+    return " ".join(parts).casefold()
+
+
+def get_curriculum_search_recommendations(
+    current_category: str,
+    current_item: str,
+    article: dict,
+    *,
+    limit: int = 5,
+) -> list[dict]:
+    """
+    根據課程名稱、重點知識與公式概念，推薦其他可搜尋主題。
+
+    同時搜尋原本知識庫與課程資料，排除目前課程及重複結果。
+    """
+    terms = _recommendation_terms(article)
+    if not terms:
+        return []
+
+    candidates: list[dict] = []
+    seen_topics: set[tuple[str, str, str]] = set()
+
+    for source in ("knowledge", "curriculum"):
+        try:
+            categories = get_categories(source=source)
+        except (KeyError, ValueError):
+            continue
+
+        for category in categories:
+            try:
+                items = get_items(category, source=source)
+            except KeyError:
+                continue
+
+            for item in items:
+                if (
+                    source == "curriculum"
+                    and category == current_category
+                    and item == current_item
+                ):
+                    continue
+
+                unique_key = (source, category, item)
+                if unique_key in seen_topics:
+                    continue
+                seen_topics.add(unique_key)
+
+                try:
+                    records = get_topic_data(
+                        category,
+                        item,
+                        source=source,
+                    )
+                except (KeyError, ValueError):
+                    continue
+
+                searchable_text = _topic_search_text(
+                    category,
+                    item,
+                    records,
+                )
+                item_text = item.casefold()
+                basename = item.rsplit("/", 1)[-1].strip().casefold()
+
+                matched_terms: list[str] = []
+                score = 0
+
+                for term in terms:
+                    normalized = term.casefold()
+
+                    if basename == normalized:
+                        score += 14
+                        matched_terms.append(term)
+                    elif normalized in basename:
+                        score += 8
+                        matched_terms.append(term)
+                    elif basename in normalized and len(basename) >= 2:
+                        score += 5
+                        matched_terms.append(term)
+                    elif normalized in item_text:
+                        score += 6
+                        matched_terms.append(term)
+                    elif normalized in searchable_text:
+                        score += 2
+                        matched_terms.append(term)
+
+                if not matched_terms:
+                    continue
+
+                if (
+                    source == "curriculum"
+                    and category == current_category
+                ):
+                    score += 2
+
+                candidates.append({
+                    "score": score,
+                    "source": source,
+                    "category": category,
+                    "item": item,
+                    "matched_terms": list(dict.fromkeys(matched_terms)),
+                })
+
+    candidates.sort(
+        key=lambda value: (
+            -value["score"],
+            0 if value["source"] == "knowledge" else 1,
+            value["category"],
+            value["item"],
+        )
+    )
+
+    results: list[dict] = []
+    used_display_names: set[str] = set()
+
+    for candidate in candidates:
+        display_name = candidate["item"].rsplit("/", 1)[-1].strip()
+
+        # 同名結果只保留分數最高的一筆，避免推薦清單重複。
+        normalized_name = display_name.casefold()
+        if normalized_name in used_display_names:
+            continue
+
+        used_display_names.add(normalized_name)
+        candidate["display_name"] = display_name
+        results.append(candidate)
+
+        if len(results) >= limit:
+            break
+
+    return results
+
+
+def print_curriculum_search_recommendations(
+    recommendations: list[dict],
+) -> None:
+    """顯示課程文章後的推薦搜尋。"""
+    if not recommendations:
+        return
+
+    print("【推薦搜尋】")
+    print()
+
+    for index, recommendation in enumerate(
+        recommendations,
+        start=1,
+    ):
+        display_name = recommendation["display_name"]
+        source = recommendation["source"]
+        category = recommendation["category"]
+        item = recommendation["item"]
+        matched_terms = "、".join(
+            recommendation["matched_terms"][:3]
+        )
+
+        source_name = (
+            "知識庫"
+            if source == "knowledge"
+            else "課程"
+        )
+
+        print(f"{index}. {display_name}")
+        print(f"   來源：{source_name}")
+        print(f"   位置：{category} / {item}")
+
+        if matched_terms:
+            print(f"   相關概念：{matched_terms}")
+
+        print(
+            f'   搜尋：knowparex search "{display_name}" '
+            f'--source {source}'
+        )
+        print()
+
+
+def print_curriculum_lesson_article(
+    article: dict,
+    recommendations: list[dict] | None = None,
+) -> None:
     """以接近課本文章的格式顯示課程內容。"""
     title = str(article.get("title", "")).strip()
     stage = str(article.get("stage", "")).strip()
@@ -1602,6 +1849,10 @@ def print_curriculum_lesson_article(article: dict) -> None:
         print("這個單元目前沒有可顯示的教材內容。")
         print()
 
+    print_curriculum_search_recommendations(
+        recommendations or [],
+    )
+
     print("=" * 55)
 
 
@@ -1629,7 +1880,16 @@ def curriculum_lesson_main(
         category,
         item,
     )
-    print_curriculum_lesson_article(article)
+    recommendations = get_curriculum_search_recommendations(
+        category,
+        item,
+        article,
+        limit=5,
+    )
+    print_curriculum_lesson_article(
+        article,
+        recommendations,
+    )
 
 
 def compare_main() -> None:
