@@ -79,15 +79,12 @@ class CurriculumQualityTests(unittest.TestCase):
             "biology", "高一生物", "光合作用與呼吸作用"
         )
         body = "".join(article["paragraphs"])
-        for expected in ("葉綠體", "類囊體膜", "卡爾文循環", "線粒體", "ATP", "物質上彼此關聯"):
+        for expected in ("葉綠體", "光反應", "碳反應", "線粒體", "ATP", "物質互相關聯"):
             self.assertIn(expected, body)
         names = [point["topic"] for point in article["key_points"]]
-        self.assertEqual(
-            ["光合作用", "細胞呼吸", "能量轉換", "物質關係", "植物的氣體交換"],
-            names,
-        )
+        self.assertEqual(["光合作用", "細胞呼吸", "物質與能量"], names)
         self.assertEqual(2, len(article["formulas"]))
-        self.assertEqual(5, len(article["examples"]))
+        self.assertEqual(3, len(article["examples"]))
         self.assertNotIn("同一母群", body)
         self.assertNotIn("統計判斷", body)
 
@@ -327,6 +324,24 @@ class CurriculumQualityTests(unittest.TestCase):
         checks={"整數與數線":("正負數","|-7|=7"),"因數倍數與分數運算":("整數指數律","2⁷=128"),"一元一次方程式":("x=5",),"二元一次聯立方程式":("(4,3)",),"比與比例式":("正比例","反比例","x≠0"),"線型函數":("斜率",),"平方根與畢氏定理":("實數","非負","直角三角形","=10"),"因式分解":("(x-2)(x-3)",),"一元二次方程式":("a≠0","解2、3"),"二次函數":("拋物線","a≠0"),"相似形入門":("對應角相等","對應邊","全等"),"圓周角與切線":("圓周角","切線","60°"),"統計與盒狀圖":("中位數3","IQR"),"機率初步":("0≤P(A)≤1","理論機率"),}
         data={u["name"]:str(u["lessonDetails"]) for s,b,u in self.iter_units() if s=="math" and b.get("stage")=="junior_high"}
         for title,terms in checks.items():
+            with self.subTest(title=title):
+                for term in terms:self.assertIn(term,data[title])
+
+    def test_biology_all_stages_are_fully_rewritten(self) -> None:
+        counts={"junior_high":0,"high_school":0}
+        for subject,book,unit in self.iter_units():
+            stage=book.get("stage")
+            if subject!="biology" or stage not in counts:continue
+            d=unit["lessonDetails"]
+            self.assertEqual([],semantic_issues("biology_"+stage,unit["name"],d),unit["name"])
+            self.assertEqual(2,len(d["readableLesson"]));self.assertGreaterEqual(len(d["keyPoints"]),3)
+            self.assertTrue(all(all(p.get(k) for k in ("topic","explanation","example","commonTrap")) for p in d["keyPoints"]));counts[stage]+=1
+        self.assertEqual({"junior_high":12,"high_school":24},counts)
+
+    def test_biology_concept_regressions(self) -> None:
+        required={"細胞構造與功能":("細胞膜","細胞核","粒線體"),"細胞膜與物質運輸":("主動運輸","ATP","滲透"),"酵素與能量代謝":("酵素","ATP","活化能"),"光合作用與呼吸作用":("葉綠體","糖解","線粒體","能量"),"營養與消化":("小腸","吸收"),"神經與內分泌":("神經","激素","胰島素"),"細胞分裂":("有絲分裂","減數分裂","四個單倍體"),"生殖與遺傳":("3:1","1 AA:2 Aa:1 aa"),"DNA與基因表現":("DNA","轉錄","轉譯","核糖體"),"演化與分類":("自然選擇","遺傳漂變","分類"),"生態系與保育":("能量","群集","生態系")}
+        data={u["name"]:str(u["lessonDetails"]) for s,b,u in self.iter_units() if s=="biology"}
+        for title,terms in required.items():
             with self.subTest(title=title):
                 for term in terms:self.assertIn(term,data[title])
 

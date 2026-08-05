@@ -527,7 +527,8 @@ def semantic_issues(subject: str, title: str, details: Dict[str, Any]) -> List[s
         + [clean_text(point.get(field)) for point in points if isinstance(point, dict)
            for field in ("topic", "explanation", "example", "commonTrap")]
     )
-    for term in SUBJECT_FORBIDDEN_TERMS.get(subject, ()):
+    subject_family = subject.split("_", 1)[0]
+    for term in SUBJECT_FORBIDDEN_TERMS.get(subject_family, ()):
         if term in text:
             issues.append("cross_subject_term:%s" % term)
 
@@ -535,7 +536,23 @@ def semantic_issues(subject: str, title: str, details: Dict[str, Any]) -> List[s
         if trigger in title and any(term not in text for term in required):
             issues.append("missing_semantic_evidence:%s" % trigger)
 
-    if subject == "math":
+    if subject_family == "biology":
+        if "營養與消化" in title and re.search(r"消化(?:就是|主要在).{0,12}細胞呼吸", text):
+            issues.append("biology:digestion_as_cellular_respiration")
+        if "光合作用" in title and any(term in text for term in ("ρ=m/V", "V=IR", "ΣF=ma")):
+            issues.append("biology:photosynthesis_cross_subject_formula")
+        if "細胞分裂" in title and re.search(r"(?<!說)有絲分裂.{0,20}四個單倍體|(?<!說)減數分裂.{0,20}兩個二倍體", text):
+            issues.append("biology:mitosis_meiosis_outcome_confusion")
+        if "呼吸" in title and re.search(r"(?:細胞呼吸就是呼吸運動|呼吸運動在線粒體)", text):
+            issues.append("biology:respiration_term_confusion")
+        if "演化" in title and re.search(r"遺傳漂變(?:就是|等同)自然選擇", text):
+            issues.append("biology:drift_as_natural_selection")
+        if subject == "biology_junior_high" and any(
+            term in text for term in ("電子傳遞鏈複合體", "組蛋白乙醯化", "RNA剪接體", "Hardy-Weinberg")
+        ):
+            issues.append("biology:junior_high_overadvanced_mechanism")
+
+    if subject_family == "math":
         if "二次函數" in title and (
             "兩點斜率主例" in text or re.search(r"二次函數.{0,20}斜率固定", text)
         ):
