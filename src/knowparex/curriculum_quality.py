@@ -440,3 +440,70 @@ def quality_issues(title: str, organized: Dict[str, Any]) -> List[str]:
         if title_terms and not title_terms.intersection(body_terms):
             issues.append("title_not_explained")
     return issues
+
+
+# Semantic checks are deliberately conservative: they catch known impossible
+# subject combinations and missing topic evidence, but do not claim to replace
+# review by a qualified teacher.
+SUBJECT_FORBIDDEN_TERMS: Dict[str, Tuple[str, ...]] = {
+    "physics": ("卡爾文循環", "葉綠體", "等位基因", "遺傳漂變", "氧化數", "限制試劑"),
+    "chemistry": ("牛頓第二定律", "向心加速度", "卡爾文循環", "遺傳漂變", "拋物線的焦點"),
+    "biology": ("歐姆定律", "串聯電阻", "向心力", "二次函數頂點", "莫耳質量"),
+    "math": ("葉綠體", "細胞呼吸", "氧化數", "電磁感應", "板塊邊界"),
+    "earth": ("歐姆定律", "卡爾文循環", "限制試劑", "二次函數頂點"),
+}
+
+TITLE_REQUIRED_TERMS: Dict[str, Tuple[str, ...]] = {
+    "牛頓第二定律": ("合力", "加速度", "質量"),
+    "細胞呼吸": ("ATP", "糖解", "粒線體"),
+    "歐姆定律": ("電壓", "電流", "電阻"),
+    "電功率": ("功率", "電壓", "電流"),
+    "氧化數": ("氧化", "還原", "電子"),
+    "ATP": ("磷酸", "能量", "細胞"),
+    "遺傳漂變": ("隨機", "族群", "等位基因"),
+    "拋物線": ("焦點", "準線", "對稱軸"),
+    "限制試劑": ("反應物", "化學計量", "產物"),
+    "板塊": ("板塊", "邊界", "地震"),
+}
+
+
+def semantic_issues(subject: str, title: str, details: Dict[str, Any]) -> List[str]:
+    """Audit topic/subject consistency as well as lesson completeness.
+
+    The check operates on the stored schema (including ``commonTrap``), not on
+    the adapter's presentation-only normalization.
+    """
+    issues: List[str] = []
+    paragraphs = details.get("readableLesson") or details.get("lessonText") or []
+    points = details.get("keyPoints") or []
+    formulas = details.get("formulas") or []
+    if not isinstance(paragraphs, list) or not 2 <= len(paragraphs) <= 5:
+        issues.append("paragraph_count")
+    if not isinstance(points, list) or len(points) < 3:
+        issues.append("key_point_count")
+    for index, point in enumerate(points if isinstance(points, list) else [], start=1):
+        if not isinstance(point, dict):
+            issues.append("key_point_%d_not_object" % index)
+            continue
+        for field in ("topic", "explanation", "example", "commonTrap"):
+            if len(clean_text(point.get(field))) < (2 if field == "topic" else 12):
+                issues.append("key_point_%d_missing_%s" % (index, field))
+
+    text = "\n".join(
+        [clean_text(title)]
+        + [clean_text(value) for value in paragraphs]
+        + [clean_text(value) for value in formulas]
+        + [clean_text(point.get(field)) for point in points if isinstance(point, dict)
+           for field in ("topic", "explanation", "example", "commonTrap")]
+    )
+    for term in SUBJECT_FORBIDDEN_TERMS.get(subject, ()):
+        if term in text:
+            issues.append("cross_subject_term:%s" % term)
+
+    for trigger, required in TITLE_REQUIRED_TERMS.items():
+        if trigger in title and any(term not in text for term in required):
+            issues.append("missing_semantic_evidence:%s" % trigger)
+
+    organized = organize_lesson(details, title)
+    issues.extend("format:%s" % issue for issue in quality_issues(title, organized))
+    return sorted(set(issues))

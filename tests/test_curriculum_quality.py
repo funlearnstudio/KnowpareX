@@ -24,6 +24,7 @@ from knowparex.curriculum_quality import (
     normalize_for_compare,
     organize_lesson,
     quality_issues,
+    semantic_issues,
     split_sentences,
 )
 
@@ -126,6 +127,60 @@ class CurriculumQualityTests(unittest.TestCase):
         stats = curriculum_stats()
         self.assertEqual(25, stats["categories"])
         self.assertEqual(816, stats["topics"])
+
+    def test_high_school_physics_units_are_fully_rewritten(self) -> None:
+        checked = 0
+        for subject, book, unit in self.iter_units():
+            if subject != "physics" or book.get("stage") != "high_school":
+                continue
+            details = unit["lessonDetails"]
+            self.assertEqual([], semantic_issues(subject, unit["name"], details), unit["name"])
+            self.assertGreaterEqual(len(details["readableLesson"]), 2)
+            self.assertGreaterEqual(len(details["keyPoints"]), 3)
+            self.assertTrue(all(point.get("commonTrap") for point in details["keyPoints"]))
+            checked += 1
+        self.assertEqual(24, checked)
+
+    def test_semantic_regressions_for_required_topics(self) -> None:
+        cases = {
+            "牛頓第二定律": ("physics", "合力、質量與加速度彼此相連。"),
+            "細胞呼吸": ("biology", "糖解後在粒線體合成ATP。"),
+            "歐姆定律": ("physics", "電壓、電流與電阻必須同時判讀。"),
+            "電功率": ("physics", "功率等於電壓乘電流。"),
+            "氧化數": ("chemistry", "追蹤電子可判斷氧化與還原。"),
+            "ATP": ("biology", "ATP的磷酸基轉移為細胞提供可用能量。"),
+            "遺傳漂變": ("biology", "小族群的等位基因頻率會因隨機抽樣改變。"),
+            "拋物線": ("math", "拋物線由焦點、準線與對稱軸描述。"),
+            "限制試劑": ("chemistry", "依化學計量比較反應物，限制試劑決定產物上限。"),
+            "板塊": ("earth", "板塊邊界的運動與地震分布密切相關。"),
+        }
+        for title, (subject, evidence) in cases.items():
+            with self.subTest(title=title):
+                details = {
+                    "readableLesson": [f"{title}的核心如下。{evidence}", f"實際判讀時仍須核對{title}的條件與證據。"],
+                    "lessonText": [f"{title}的核心如下。{evidence}", f"實際判讀時仍須核對{title}的條件與證據。"],
+                    "formulas": [],
+                    "keyPoints": [
+                        {"topic": f"{title}概念{i}", "explanation": f"這是與{title}直接相關且可驗證的第{i}項解釋。", "example": f"以具體情境{i}示範{title}的正確判斷。", "commonTrap": f"不可把不相關學科內容混入{title}的第{i}項判斷。"}
+                        for i in range(1, 4)
+                    ],
+                }
+                self.assertEqual([], semantic_issues(subject, title, details))
+
+    def test_semantic_audit_rejects_cross_subject_pollution(self) -> None:
+        details = {
+            "readableLesson": ["電功率說明電能轉換速率。", "葉綠體的卡爾文循環固定二氧化碳。"],
+            "lessonText": ["電功率說明電能轉換速率。", "葉綠體的卡爾文循環固定二氧化碳。"],
+            "formulas": ["P=VI。"],
+            "keyPoints": [
+                {"topic": "功率", "explanation": "電功率是單位時間轉換的電能。", "example": "12 V、2 A時功率為24 W。", "commonTrap": "不可混淆功率與電能。"},
+                {"topic": "電壓", "explanation": "電壓是單位電荷的能量差。", "example": "電池兩端可維持電位差。", "commonTrap": "不可把電壓當作電流。"},
+                {"topic": "電流", "explanation": "電流是單位時間通過的電量。", "example": "每秒2 C代表2 A。", "commonTrap": "不可把安培當作能量單位。"},
+            ],
+        }
+        issues = semantic_issues("physics", "電功率", details)
+        self.assertIn("cross_subject_term:卡爾文循環", issues)
+        self.assertIn("cross_subject_term:葉綠體", issues)
 
 
 if __name__ == "__main__":
