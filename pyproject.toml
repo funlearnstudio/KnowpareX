@@ -7,7 +7,7 @@ name = "knowparex"
 version = "1.5.12"
 description = "A knowledge relationship, comparison, and learning database."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 authors = [{ name = "Steve Lin" }]
 license = { file = "LICENSE-CODE" }
 classifiers = [
