@@ -40,6 +40,61 @@ KnowpareX 是一套可重複使用的 Python 套件。
 無論是學生學習、教師開發教材，或是開發教育軟體，都可以快速整合 KnowpareX。
 
 ---
+# 📂 Example Applications / 範例程式
+
+Included examples:
+
+內建範例：
+
+- [Compare Tool](examples/TOOL.COMPARE.py)
+- [Practice Tool](examples/TOOL.PRACTICE.py)
+- [Review Tool](examples/TOOL.REVIEW.py)
+
+---
+
+# 📖 Documentation / 完整文件
+
+Complete documentation:
+
+完整技術文件：
+
+[CHINESE--KNOWPAREX_API_GUIDE](KNOWPAREX_API_GUIDE.td-chi.md)
+[ENGLISH--KNOWPAREX_API_GUIDE](KNOWPAREX_API_GUID.en-us.md)
+
+Includes：
+
+包含：
+
+- Python API
+- Command Line Guide
+- Relationship Functions
+- Data Structure
+- Registered Topics
+- Developer Guide
+
+- Python API
+- CLI 指令
+- 關係函式
+- 資料結構
+- 全部主題
+- 開發者指南
+
+---
+
+# 👨‍💻 Who is this for? / 適合誰？
+
+KnowpareX is designed for:
+
+適合：
+
+- 🎓 Students（學生）
+- 👨‍🏫 Teachers（教師）
+- 💻 Python Developers（Python 開發者）
+- 📚 Educational Projects（教育專案）
+- 🧠 Knowledge Management（知識管理）
+- 🤖 Learning Applications（學習應用）
+
+---
 
 # ✨ Features / 功能特色
 
@@ -261,62 +316,6 @@ Search and Scan also support：
 - 一般知識資料
 - 課程資料
 - 同時搜尋兩者
-
----
-
-# 📂 Example Applications / 範例程式
-
-Included examples:
-
-內建範例：
-
-- [Compare Tool](examples/TOOL.COMPARE.py)
-- [Practice Tool](examples/TOOL.PRACTICE.py)
-- [Review Tool](examples/TOOL.REVIEW.py)
-
----
-
-# 📖 Documentation / 完整文件
-
-Complete documentation:
-
-完整技術文件：
-
-[CHINESE--KNOWPAREX_API_GUIDE](KNOWPAREX_API_GUIDE.td-chi.md)
-[ENGLISH--KNOWPAREX_API_GUIDE](KNOWPAREX_API_GUID.en-us.md)
-
-Includes：
-
-包含：
-
-- Python API
-- Command Line Guide
-- Relationship Functions
-- Data Structure
-- Registered Topics
-- Developer Guide
-
-- Python API
-- CLI 指令
-- 關係函式
-- 資料結構
-- 全部主題
-- 開發者指南
-
----
-
-# 👨‍💻 Who is this for? / 適合誰？
-
-KnowpareX is designed for:
-
-適合：
-
-- 🎓 Students（學生）
-- 👨‍🏫 Teachers（教師）
-- 💻 Python Developers（Python 開發者）
-- 📚 Educational Projects（教育專案）
-- 🧠 Knowledge Management（知識管理）
-- 🤖 Learning Applications（學習應用）
 
 ---
 
