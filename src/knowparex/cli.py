@@ -9,9 +9,14 @@ import random
 from datetime import date
 from pathlib import Path
 
-def print_topic_text(category: str, item: str) -> None:
+def print_topic_text(
+    category: str,
+    item: str,
+    *,
+    source: str = "knowledge",
+) -> None:
     """以適合人閱讀的格式顯示主題資料。"""
-    data = get_topic_data(category, item)
+    data = get_topic_data(category, item, source=source)
 
     print()
     print("=" * 55)
@@ -78,6 +83,7 @@ def search_main(
     random_result: bool = False,
     tree_view: bool = False,
     open_topic: bool = False,
+    source: str = "knowledge",
 ) -> None:
     """搜尋分類、主題與知識內容。"""
     original_keyword = keyword.strip()
@@ -110,7 +116,7 @@ def search_main(
         )
         return
     
-    all_categories = get_categories()
+    all_categories = get_categories(source=source)
 
     if category_filter is not None:
         matching_categories = [
@@ -144,7 +150,7 @@ def search_main(
             exact=exact,
         )
 
-        for item in get_items(category):
+        for item in get_items(category, source=source):
             topic_key = (category, item)
 
             item_matches = text_matches(
@@ -163,7 +169,7 @@ def search_main(
                 continue
 
             try:
-                records = get_topic_data(category, item)
+                records = get_topic_data(category, item, source=source)
             except KeyError:
                 continue
 
@@ -771,71 +777,6 @@ def _normalize_scan_text(value: object) -> str:
 
     return str(value).strip()
 
-
-SCAN_IGNORED_CONCEPTS = {
-    "已知",
-    "未知",
-    "判斷",
-    "說明",
-    "敘述",
-    "問題",
-    "結果",
-    "答案",
-    "原因",
-    "表示",
-    "比較",
-    "次數",
-    "之後",
-    "之前",
-    "產生",
-    "形成",
-    "進行",
-    "發生",
-    "活動",
-    "環境",
-    "影響",
-    "增加",
-    "減少",
-    "降低",
-    "提高",
-    "主要",
-    "一般",
-    "通常",
-    "可能",
-    "容易",
-    "可以",
-    "利用",
-    "使用",
-    "根據",
-    "依照",
-    "下列",
-    "上述",
-    "其中",
-    "因此",
-    "所以",
-    "因為",
-    "而且",
-    "以及",
-    "並且",
-    "同時",
-    "另外",
-    "正確",
-    "錯誤",
-    "是否",
-    "屬於",
-    "請問",
-    "求出",
-    "合理",
-    "較高",
-    "較低",
-    "沒有",
-    "不是",
-    "不一定",
-    "不代表",
-    "介紹",
-}
-
-
 SCAN_PREFIXES = (
     "進行",
     "利用",
@@ -846,13 +787,12 @@ SCAN_PREFIXES = (
     "採用",
     "具有",
     "屬於",
+    "可",
     "可以",
     "可能",
     "容易",
     "主要",
-    "可",
 )
-
 
 SCAN_SUFFIXES = (
     "增加",
@@ -863,58 +803,46 @@ SCAN_SUFFIXES = (
     "產生",
     "發生",
     "改變",
+    "作用",
+    "現象",
+    "功能",
+    "用途",
+    "原因",
+    "方法",
+    "過程",
 )
 
-
 def _normalize_scan_concept(concept: str) -> str:
-    """將候選概念正規化，避免把整句當作概念。"""
+    """將候選概念做正規化，避免把整句當概念。"""
+
     concept = concept.strip()
 
     changed = True
-
     while changed:
         changed = False
 
-        for prefix in sorted(
-            SCAN_PREFIXES,
-            key=len,
-            reverse=True,
-        ):
-            if (
-                concept.startswith(prefix)
-                and len(concept) > len(prefix) + 1
-            ):
+        for prefix in SCAN_PREFIXES:
+            if concept.startswith(prefix) and len(concept) > len(prefix) + 1:
                 concept = concept[len(prefix):].strip()
                 changed = True
-                break
 
-        for suffix in sorted(
-            SCAN_SUFFIXES,
-            key=len,
-            reverse=True,
-        ):
-            if (
-                concept.endswith(suffix)
-                and len(concept) > len(suffix) + 1
-            ):
+        for suffix in SCAN_SUFFIXES:
+            if concept.endswith(suffix) and len(concept) > len(suffix) + 1:
                 concept = concept[:-len(suffix)].strip()
                 changed = True
-                break
 
     return concept
-
-
 def collect_scan_topics(
     *,
-    minimum_length: int = 2,
+    source: str = "knowledge",
 ) -> list[dict]:
     """整理所有主題及其可供掃描比對的關鍵詞。"""
     scan_topics: list[dict] = []
 
-    for category in get_categories():
-        for item in get_items(category):
+    for category in get_categories(source=source):
+        for item in get_items(category, source=source):
             try:
-                records = get_topic_data(category, item)
+                records = get_topic_data(category, item, source=source)
             except KeyError:
                 continue
 
@@ -924,10 +852,7 @@ def collect_scan_topics(
                 _normalize_scan_text(item)
             )
 
-            if not _should_ignore_scan_term(
-                normalized_item,
-                minimum_length=minimum_length,
-            ):
+            if normalized_item:
                 terms.add(normalized_item)
 
             for record in records:
@@ -937,10 +862,7 @@ def collect_scan_topics(
                     )
                     term = _normalize_scan_concept(term)
 
-                    if _should_ignore_scan_term(
-                        term,
-                        minimum_length=minimum_length,
-                    ):
+                    if not term:
                         continue
 
                     terms.add(term)
@@ -954,205 +876,6 @@ def collect_scan_topics(
             )
 
     return scan_topics
-CHINESE_NUMBER_CHARS = "零〇一二三四五六七八九十百千兩"
-
-
-def _normalize_scan_input(text: str) -> str:
-    """清除容易造成 scan 誤命中的章節、題號與版面標記。"""
-    normalized = text.strip()
-
-    patterns = (
-        # 只處理每行開頭的 1-1、2－3、10—2-1 等章節編號
-        # 避免誤刪句子中真正的 5-3 算式
-        r"(?m)^\s*\d+(?:\s*[-－—]\s*\d+){1,2}\s*",
-
-        # 每行開頭的 1.1、2.3.1 等章節編號
-        # 要求後面有空白，避免把 3.14 當章節
-        r"(?m)^\s*\d+(?:\.\d+){1,2}(?=\s)\s*",
-
-        # 第2章、第二章、第 3 節、第十二單元
-        r"第\s*[0-9"
-        + CHINESE_NUMBER_CHARS
-        + r"]+\s*(?:章|節|單元|課|課次|篇|部分)",
-
-        # 第2章第3節這種連續格式
-        r"第\s*[0-9"
-        + CHINESE_NUMBER_CHARS
-        + r"]+\s*章\s*第\s*[0-9"
-        + CHINESE_NUMBER_CHARS
-        + r"]+\s*節",
-
-        # 第二冊、上冊、下冊
-        r"第\s*[0-9"
-        + CHINESE_NUMBER_CHARS
-        + r"]+\s*冊",
-
-        # 第1題、第一題、第 12 小題
-        r"第\s*[0-9"
-        + CHINESE_NUMBER_CHARS
-        + r"]+\s*(?:題|小題)",
-
-        # 題組一、題組 2
-        r"題組\s*[0-9"
-        + CHINESE_NUMBER_CHARS
-        + r"]+",
-
-        # 每行開頭的（1）、(2)、【3】、[4]
-        r"(?m)^\s*[\(\（\[\【]\s*[0-9"
-        + CHINESE_NUMBER_CHARS
-        + r"]+\s*[\)\）\]\】]\s*",
-
-        # 每行開頭的 1.、2)、3、 等題號
-        r"(?m)^\s*\d+\s*(?:[.．、\)])\s*",
-
-        # 每行開頭的一、二、三、
-        r"(?m)^\s*["
-        + CHINESE_NUMBER_CHARS
-        + r"]+\s*[、.．]\s*",
-
-        # Page 12、p. 12、第12頁
-        r"(?:Page|PAGE|page|P\.|p\.)\s*\d+",
-        r"第\s*\d+\s*頁",
-
-        # Chapter 2、Unit 3、Section 1
-        r"\b(?:Chapter|Unit|Section|Lesson)\s+\d+\b",
-
-        # 常見獨立版面標記
-        r"(?m)^\s*(?:例題|範例|練習題|習題|隨堂練習|課後練習)\s*[0-9"
-        + CHINESE_NUMBER_CHARS
-        + r"]*\s*[:：]?\s*",
-    )
-
-    for pattern in patterns:
-        normalized = re.sub(
-            pattern,
-            " ",
-            normalized,
-            flags=re.IGNORECASE,
-        )
-
-    # 合併清除後產生的多餘空白
-    normalized = re.sub(r"[ \t]+", " ", normalized)
-    normalized = re.sub(r"\n{3,}", "\n\n", normalized)
-
-    return normalized.strip()
-
-
-def _should_ignore_scan_term(
-    term: str,
-    *,
-    minimum_length: int = 2,
-) -> bool:
-    """判斷某個候選詞是否不適合拿來做主題掃描。"""
-    term = term.strip()
-
-    if not term:
-        return True
-
-    if len(term) < minimum_length:
-        return True
-
-    if term in SCAN_IGNORED_CONCEPTS:
-        return True
-    # 略過過短的全小寫英文碎片
-    # 避免 nc 命中 Function 這類子字串
-    if re.fullmatch(r"[a-z]{1,2}", term):
-        return True
-
-    # 純整數、小數、正負數
-    # 例如：5、-1、3.14、+8
-    if re.fullmatch(r"[+-]?\d+(?:\.\d+)?", term):
-        return True
-
-    # 數字加單一英文字母
-    # 例如：5x、12y、3a
-    if re.fullmatch(r"[+-]?\d+[a-zA-Z]", term):
-        return True
-
-    # 英文字母加數字
-    # 例如：x2、a5、y10
-    if re.fullmatch(r"[a-zA-Z]\d+", term):
-        return True
-
-    # 單獨變數或帶正負號的變數
-    # 例如：x、-x、+y、a
-    if re.fullmatch(r"[+-]?[a-zA-Z]", term):
-        return True
-
-    # 變數的次方
-    # 例如：x²、x³、x^2、a^10
-    if re.fullmatch(
-        r"[+-]?[a-zA-Z](?:\^[+-]?\d+|[²³⁴⁵⁶⁷⁸⁹⁰]+)",
-        term,
-    ):
-        return True
-
-    # 係數乘變數及其冪次
-    # 例如：5x²、-3y^2、10a³
-    if re.fullmatch(
-        r"[+-]?\d+(?:\.\d+)?[a-zA-Z]"
-        r"(?:\^[+-]?\d+|[²³⁴⁵⁶⁷⁸⁹⁰]+)?",
-        term,
-    ):
-        return True
-
-    # 簡單分數或比例
-    # 例如：3/4、-1/2、2:3、5：8
-    if re.fullmatch(
-        r"[+-]?\d+\s*(?:/|:|：)\s*[+-]?\d+",
-        term,
-    ):
-        return True
-
-    # 百分比
-    # 例如：20%、-5%、12.5%
-    if re.fullmatch(
-        r"[+-]?\d+(?:\.\d+)?%",
-        term,
-    ):
-        return True
-
-    # 只包含英文字母、數字和數學符號，
-    # 並且至少含有一個數學運算符號。
-    # 例如：x+5、2x+3、x²-5x+6、y=x+1、x!=2
-    if (
-        re.fullmatch(
-            r"[0-9a-zA-Z\s+\-*/^=<>!().²³⁴⁵⁶⁷⁸⁹⁰]+",
-            term,
-        )
-        and re.search(r"[+\-*/^=<>!]", term)
-    ):
-        return True
-
-    # 常見函數表示式
-    # 例如：f(x)、g(x)、f(x)=x²
-    if re.fullmatch(
-        r"[a-zA-Z]\s*\([^)]*\)"
-        r"(?:\s*[=<>!]+\s*.+)?",
-        term,
-    ):
-        return True
-
-    # 數學區間
-    # 例如：(1, 5)、[-2, 3]、(0, +∞)
-    if re.fullmatch(
-        r"[\[(]\s*[+\-]?(?:\d+(?:\.\d+)?|∞)"
-        r"\s*,\s*[+\-]?(?:\d+(?:\.\d+)?|∞)\s*[\])]",
-        term,
-    ):
-        return True
-
-    # 座標
-    # 例如：(3, 4)、(-1, 2)
-    if re.fullmatch(
-        r"\(\s*[+-]?\d+(?:\.\d+)?"
-        r"\s*,\s*[+-]?\d+(?:\.\d+)?\s*\)",
-        term,
-    ):
-        return True
-
-    return False
-
 def scan_text_for_topics(
     text: str,
     scan_topics: list[dict],
@@ -1161,8 +884,7 @@ def scan_text_for_topics(
 ) -> list[dict]:
     """掃描文字並回傳命中的知識主題。"""
     original_text = text.strip()
-    scan_text = _normalize_scan_input(original_text)
-    normalized_text = scan_text.casefold()
+    normalized_text = original_text.casefold()
 
     if not normalized_text:
         return []
@@ -1287,11 +1009,10 @@ def print_scan_topic_result(
 def interactive_scan_main(
     *,
     minimum_length: int = 2,
+    source: str = "knowledge",
 ) -> None:
     """重複掃描文字，並允許直接開啟命中的主題。"""
-    scan_topics = collect_scan_topics(
-        minimum_length=minimum_length,
-    )
+    scan_topics = collect_scan_topics(source=source)
 
     exit_commands = {
         "0",
@@ -1375,6 +1096,7 @@ def interactive_scan_main(
             print_topic_text(
                 selected_topic["category"],
                 selected_topic["item"],
+                source=source,
             )
 
             again = input(
@@ -1404,6 +1126,7 @@ def scan_main(
     *,
     minimum_length: int = 2,
     json_output: bool = False,
+    source: str = "knowledge",
 ) -> None:
     """執行單次主題掃描，或進入互動模式。"""
     if minimum_length < 1:
@@ -1417,12 +1140,11 @@ def scan_main(
 
         interactive_scan_main(
             minimum_length=minimum_length,
+            source=source,
         )
         return
 
-    scan_topics = collect_scan_topics(
-        minimum_length=minimum_length,
-    )
+    scan_topics = collect_scan_topics(source=source)
 
     matched_topics = scan_text_for_topics(
         text,
@@ -1748,6 +1470,79 @@ def related_main(
         print(f"  共同內容：{preview_terms}")
 
     print("=" * 55)
+
+def curriculum_subjects_main() -> None:
+    """列出課程資料中的科目。"""
+    from .curriculum_adapter import get_subjects
+
+    for subject in get_subjects():
+        print(f'{subject["key"]}\t{subject["name"]}')
+
+
+def curriculum_books_main(
+    subject: str,
+    *,
+    stage: str | None = None,
+) -> None:
+    """列出指定科目的冊別。"""
+    from .curriculum_adapter import get_books
+
+    books = get_books(subject, stage=stage)
+
+    if not books:
+        print("找不到符合條件的冊別。")
+        return
+
+    for book in books:
+        print(
+            f'{book["stage"]}\t'
+            f'{book["subject"]}\t'
+            f'{book["book"]}'
+        )
+
+
+def curriculum_units_main(
+    subject: str,
+    book: str,
+    *,
+    stage: str | None = None,
+) -> None:
+    """列出指定冊別中的單元。"""
+    from .curriculum_adapter import get_units
+
+    units = get_units(subject, book, stage=stage)
+
+    if not units:
+        print("找不到符合條件的單元。")
+        return
+
+    for unit in units:
+        print(unit["unit"])
+
+
+def curriculum_lesson_main(
+    subject: str,
+    book: str,
+    unit: str,
+    *,
+    stage: str | None = None,
+) -> None:
+    """顯示一個課程單元。"""
+    from .curriculum_adapter import find_curriculum_topic
+
+    category, item = find_curriculum_topic(
+        subject,
+        book,
+        unit,
+        stage=stage,
+    )
+    print_topic_text(
+        category,
+        item,
+        source="curriculum",
+    )
+
+
 def compare_main() -> None:
     print("=" * 55)
     print("KnowpareX / Steve 知識資料庫")
@@ -1802,6 +1597,60 @@ def main() -> None:
 
     subparsers = parser.add_subparsers(dest="command")
 
+    curriculum_parser = subparsers.add_parser(
+        "curriculum",
+        help="瀏覽 MindLeapX 課程資料",
+    )
+    curriculum_subparsers = curriculum_parser.add_subparsers(
+        dest="curriculum_command",
+        required=True,
+    )
+
+    curriculum_subparsers.add_parser(
+        "subjects",
+        help="列出全部課程科目",
+    )
+
+    books_parser = curriculum_subparsers.add_parser(
+        "books",
+        help="列出指定科目的冊別",
+    )
+    books_parser.add_argument("subject", help="科目，例如 math、數學")
+    books_parser.add_argument(
+        "--stage",
+        "--category",
+        dest="stage",
+        help="可選學制：國小、國中、高中",
+    )
+
+    units_parser = curriculum_subparsers.add_parser(
+        "units",
+        help="列出指定冊別的單元",
+    )
+    units_parser.add_argument("subject", help="科目，例如 math、數學")
+    units_parser.add_argument("book", help="冊別，例如 高一上")
+    units_parser.add_argument(
+        "--stage",
+        "--category",
+        dest="stage",
+        help="可選學制：國小、國中、高中",
+    )
+
+    lesson_parser = curriculum_subparsers.add_parser(
+        "lesson",
+        help="顯示指定單元教材",
+    )
+    lesson_parser.add_argument("subject", help="科目，例如 math、數學")
+    lesson_parser.add_argument("book", help="冊別，例如 高一上")
+    lesson_parser.add_argument("unit", help="單元，例如 函數")
+    lesson_parser.add_argument(
+        "--stage",
+        "--category",
+        dest="stage",
+        help="可選學制：國小、國中、高中",
+    )
+
+
     subparsers.add_parser(
         "compare",
         help="互動式查詢與比較",
@@ -1843,6 +1692,12 @@ def main() -> None:
     search_parser.add_argument(
         "keyword",
         help="搜尋關鍵字",
+    )
+    search_parser.add_argument(
+        "--source",
+        choices=("knowledge", "curriculum", "all"),
+        default="knowledge",
+        help="資料來源；預設只搜尋原本知識庫",
     )
 
     search_parser.add_argument(
@@ -1984,6 +1839,12 @@ def main() -> None:
         nargs="?",
         help="要掃描的文字；省略時進入互動模式",
     )
+    scan_parser.add_argument(
+        "--source",
+        choices=("knowledge", "curriculum", "all"),
+        default="knowledge",
+        help="資料來源；預設只掃描原本知識庫",
+    )
 
     scan_parser.add_argument(
         "--min-length",
@@ -2012,7 +1873,29 @@ def main() -> None:
     args = parser.parse_args()
 
     try:
-        if args.command is None or args.command == "compare":
+        if args.command == "curriculum":
+            if args.curriculum_command == "subjects":
+                curriculum_subjects_main()
+            elif args.curriculum_command == "books":
+                curriculum_books_main(
+                    args.subject,
+                    stage=args.stage,
+                )
+            elif args.curriculum_command == "units":
+                curriculum_units_main(
+                    args.subject,
+                    args.book,
+                    stage=args.stage,
+                )
+            elif args.curriculum_command == "lesson":
+                curriculum_lesson_main(
+                    args.subject,
+                    args.book,
+                    args.unit,
+                    stage=args.stage,
+                )
+
+        elif args.command is None or args.command == "compare":
             compare_main()
 
         elif args.command == "practice":
@@ -2074,6 +1957,7 @@ def main() -> None:
                 args.text,
                 minimum_length=args.min_length,
                 json_output=args.json,
+                source=args.source,
             )
         elif args.command == "search":
             search_main(
@@ -2089,6 +1973,7 @@ def main() -> None:
                 random_result=args.random_result,
                 tree_view=args.tree,
                 open_topic=args.open_topic,
+                source=args.source,
             )
     except KeyError as error:
         parser.error(str(error))

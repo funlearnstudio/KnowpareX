@@ -552,6 +552,74 @@ knowparex --help
 ```
 
 ---
+# 使用者說明書新增章節
+
+# 課程資料功能
+
+課程資料來自 MindLeapX 的教材資料庫。
+
+目前包含：
+
+- 國小
+- 國中
+- 高中
+- 多個科目
+- 冊別
+- 單元
+
+## 常用指令
+
+### 科目
+
+```bash
+knowparex curriculum subjects
+```
+
+### 冊別
+
+```bash
+knowparex curriculum books math
+```
+
+### 單元
+
+```bash
+knowparex curriculum units math 高一上
+```
+
+### 教材
+
+```bash
+knowparex curriculum lesson math 高一上 "實數與絕對值"
+```
+
+## 資料來源
+
+KnowpareX 有三種資料來源：
+
+- knowledge（預設知識庫）
+- curriculum（課程資料）
+- all（兩者一起）
+
+因此：
+
+```bash
+knowparex scan "牛頓第二定律"
+```
+
+不會自動掃描課程。
+
+若需要：
+
+```bash
+knowparex scan "牛頓第二定律" --source curriculum
+```
+
+或：
+
+```bash
+knowparex scan "牛頓第二定律" --source all
+```
 
 # 4. 主要 Python API
 

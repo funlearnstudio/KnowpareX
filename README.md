@@ -225,7 +225,59 @@ knowparex scan "流汗時汗水蒸發會吸收汽化潛熱"
     "歐姆定律": physics_electricity.ohms_law,
 }
 ```
+## 📚 Curriculum（課程資料）
 
+KnowpareX 現在支援瀏覽 MindLeapX 課程資料。
+
+> **注意：課程資料與一般知識資料分開管理。**
+>
+> 預設搜尋、掃描仍使用 KnowpareX 知識庫，不會混合課程資料。
+
+### 查看科目
+
+```bash
+knowparex curriculum subjects
+```
+
+### 查看某科冊別
+
+```bash
+knowparex curriculum books math
+```
+
+### 查看冊別中的單元
+
+```bash
+knowparex curriculum units math 高一上
+```
+
+### 查看教材
+
+```bash
+knowparex curriculum lesson math 高一上 "實數與絕對值"
+```
+
+## 🔍 搜尋資料來源
+
+預設：
+
+```bash
+knowparex search "函數"
+```
+
+只搜尋 KnowpareX 知識庫。
+
+只搜尋課程：
+
+```bash
+knowparex search "函數" --source curriculum
+```
+
+搜尋全部：
+
+```bash
+knowparex search "函數" --source all
+```
 ## License / 授權
 
 - Original Python source code: MIT License (`LICENSE-CODE`)
