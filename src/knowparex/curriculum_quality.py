@@ -535,6 +535,26 @@ def semantic_issues(subject: str, title: str, details: Dict[str, Any]) -> List[s
         if trigger in title and any(term not in text for term in required):
             issues.append("missing_semantic_evidence:%s" % trigger)
 
+    if subject == "math":
+        if "二次函數" in title and (
+            "兩點斜率主例" in text or re.search(r"二次函數.{0,20}斜率固定", text)
+        ):
+            issues.append("math:quadratic_linear_slope_pollution")
+        if any(term in title for term in ("直線", "圓", "向量", "空間", "圓錐")):
+            for foreign in ("密度ρ", "牛頓第二定律", "化學反應式"):
+                if foreign in text:
+                    issues.append("math:geometry_cross_subject:%s" % foreign)
+        if "機率" in title and re.search(r"(?:排列|組合)數(?:就是|直接等於)機率", text):
+            issues.append("math:count_is_probability")
+        if "對數" in title and not all(
+            term in text for term in ("底數", "真數", "a>0", "a≠1", "x>0")
+        ):
+            issues.append("math:log_domain_missing")
+        if ("微分" in title or "導數" in title) and re.search(
+            r"平均變化率(?:就是|等於)導數", text
+        ):
+            issues.append("math:average_rate_as_derivative")
+
     organized = organize_lesson(details, title)
     # ``quality_issues`` uses conservative lexical token overlap.  Compound
     # Chinese titles such as 「酸鹼鹽」 can be fully covered while producing no

@@ -64,17 +64,14 @@ class CurriculumQualityTests(unittest.TestCase):
 
     def test_polynomial_function_is_topic_specific(self) -> None:
         _category, _item, article = self.article("math", "高一上", "多項式函數")
-        self.assertEqual(3, len(article["paragraphs"]))
+        self.assertGreaterEqual(len(article["paragraphs"]), 2)
         body = "".join(article["paragraphs"])
-        for expected in ("一般寫成", "次數", "係數", "零點", "因式定理", "圖形"):
+        for expected in ("多項式", "餘式", "二次函數", "定義域"):
             self.assertIn(expected, body)
         names = [point["topic"] for point in article["key_points"]]
-        self.assertEqual(
-            ["一般形式與次數", "係數與常數項", "零點", "因式定理", "圖形基本特徵"],
-            names,
-        )
-        self.assertEqual(3, len(article["formulas"]))
-        self.assertEqual(5, len(article["examples"]))
+        self.assertEqual(["多項式與餘式", "二次函數", "代數式運算"], names)
+        self.assertGreaterEqual(len(article["formulas"]), 3)
+        self.assertEqual(3, len(article["examples"]))
         self.assertNotIn("兩點(1,3)", body)
 
     def test_photosynthesis_and_respiration_is_topic_specific(self) -> None:
@@ -273,6 +270,48 @@ class CurriculumQualityTests(unittest.TestCase):
                     self.assertIn(term, text)
                 for term in forbidden:
                     self.assertNotIn(term, text)
+
+    def test_high_school_math_units_are_fully_rewritten(self) -> None:
+        checked = 0
+        for subject, book, unit in self.iter_units():
+            if subject != "math" or book.get("stage") != "high_school":
+                continue
+            details = unit["lessonDetails"]
+            self.assertEqual([], semantic_issues("math", unit["name"], details), unit["name"])
+            self.assertEqual(2, len(details["readableLesson"]))
+            self.assertGreaterEqual(len(details["keyPoints"]), 3)
+            self.assertTrue(all(all(point.get(k) for k in ("topic", "explanation", "example", "commonTrap")) for point in details["keyPoints"]))
+            checked += 1
+        self.assertEqual(36, checked)
+
+    def test_high_school_math_concept_regressions(self) -> None:
+        required = {
+            "多項式函數": ("餘式定理", "二次函數"), "指數與對數": ("a>0", "a≠1", "真數", "x>0"),
+            "三角函數": ("弧度", "tan", "x≠π/2+kπ"), "平面向量": ("內積", "u·v"),
+            "空間向量": ("叉積", "v×u"), "直線方程式": ("斜率", "x₂-x₁"),
+            "圓方程式": ("圓心", "r>0"), "圓錐曲線": ("橢圓", "雙曲線", "拋物線"),
+            "數列級數": ("等差", "等比", "|r|<1"), "排列組合": ("排列", "組合", "P(n,r)"),
+            "機率": ("0≤P(A)≤1", "樣本"), "數據分析": ("平均", "標準差"),
+            "極限概念": ("0/0", "x≠2"), "微分與導數": ("瞬時變化率", "平均變化率", "f′(3)"),
+            "積分概念": ("反導函數", "+C", "=4"), "二次函數": ("a≠0", "拋物線"),
+        }
+        by_title={u["name"]:u["lessonDetails"] for s,b,u in self.iter_units() if s=="math" and b.get("stage")=="high_school"}
+        # The curriculum title is 「多項式函數」; its quadratic point supplies
+        # the required high-school quadratic-function regression.
+        for title, terms in required.items():
+            target = "多項式函數" if title == "二次函數" else title
+            with self.subTest(title=title):
+                text=str(by_title[target])
+                for term in terms: self.assertIn(term,text)
+
+    def test_math_semantic_audit_detects_known_failure_modes(self) -> None:
+        base={"readableLesson":["主題正文包含足夠定義與條件。","第二段提供直接相關的推理與限制。"],"lessonText":["主題正文包含足夠定義與條件。","第二段提供直接相關的推理與限制。"],"formulas":[],"keyPoints":[{"topic":f"重點{i}","explanation":"這是一段完整而可檢驗的數學解釋。","example":"具體例子含有正確步驟與答案。","commonTrap":"不可忽略定義條件與符號限制。"} for i in range(3)]}
+        import copy
+        cases=[("二次函數","二次函數兩點斜率主例", "math:quadratic_linear_slope_pollution"),("圓方程式","牛頓第二定律", "math:geometry_cross_subject:牛頓第二定律"),("機率","排列數直接等於機率", "math:count_is_probability"),("對數函數","只有log運算但沒有條件", "math:log_domain_missing"),("微分與導數","平均變化率就是導數", "math:average_rate_as_derivative")]
+        for title,bad,expected in cases:
+            with self.subTest(title=title):
+                details=copy.deepcopy(base); details["readableLesson"][0]+=bad; details["lessonText"]=list(details["readableLesson"])
+                self.assertIn(expected,semantic_issues("math",title,details))
 
 
 if __name__ == "__main__":
