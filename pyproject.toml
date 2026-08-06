@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "knowparex"
-version = "1.7.0"
+version = "1.8.0"
 description = "A knowledge relationship, comparison, and learning database."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -23,6 +23,7 @@ knowparex = "knowparex.cli:main"
 knowparex-compare = "knowparex.cli:compare_main"
 knowparex-practice = "knowparex.cli:practice_main"
 knowparex-review = "knowparex.cli:review_main"
+knowparex-learning = "knowparex.tools.learning:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
