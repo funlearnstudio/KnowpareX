@@ -9,6 +9,39 @@ KnowpareX. It is separate from `README.md` and can be kept as a command handbook
 本文件說明 KnowpareX 已實作的使用者終端機指令。它與 `README.md` 分開，可以作為
 獨立的指令手冊保存。
 
+## Table of Contents / 目錄
+
+1. [Command notation / 指令符號](#1-command-notation--指令符號)
+2. [Installation and version checks / 安裝與版本檢查](#2-installation-and-version-checks--安裝與版本檢查)
+3. [Interactive comparison / 互動比較](#3-interactive-comparison--互動比較)
+4. [Categories and topics / 分類與主題](#4-categories-and-topics--分類與主題)
+5. [Search / 搜尋](#5-search--搜尋)
+6. [Text concept scanner / 文字概念掃描](#6-text-concept-scanner--文字概念掃描)
+7. [Curriculum commands / 課程指令](#7-curriculum-commands--課程指令)
+8. [Practice / 練習](#8-practice--練習)
+9. [Wrong-answer review / 錯題複習](#9-wrong-answer-review--錯題複習)
+10. [Database statistics / 資料庫統計](#10-database-statistics--資料庫統計)
+11. [Today's knowledge / 今日知識](#11-todays-knowledge--今日知識)
+12. [Explain a topic / 解釋主題](#12-explain-a-topic--解釋主題)
+13. [Export a built-in topic / 匯出內建主題](#13-export-a-built-in-topic--匯出內建主題)
+14. [Related topics / 相關主題](#14-related-topics--相關主題)
+15. [Learning Memory overview / Learning Memory 總覽](#15-learning-memory-overview--learning-memory-總覽)
+16. [Add a Learning Memory record / 新增學習紀錄](#16-add-a-learning-memory-record--新增學習紀錄)
+17. [List Learning Memory records / 列出學習紀錄](#17-list-learning-memory-records--列出學習紀錄)
+18. [Show reviews due today / 顯示今日到期複習](#18-show-reviews-due-today--顯示今日到期複習)
+19. [Record a completed review / 記錄完成複習](#19-record-a-completed-review--記錄完成複習)
+20. [Import one learning file / 匯入單一學習檔案](#20-import-one-learning-file--匯入單一學習檔案)
+21. [Import a learning directory / 匯入學習資料夾](#21-import-a-learning-directory--匯入學習資料夾)
+22. [Export a Learning Memory page / 匯出學習頁面](#22-export-a-learning-memory-page--匯出學習頁面)
+23. [Learning Memory storage / 學習記憶保存位置](#23-learning-memory-storage--學習記憶保存位置)
+24. [Wrong-question storage / 錯題保存位置](#24-wrong-question-storage--錯題保存位置)
+25. [Testing the Learning Memory feature / 測試 Learning Memory](#25-testing-the-learning-memory-feature--測試-learning-memory)
+26. [A complete daily workflow / 完整每日流程](#26-a-complete-daily-workflow--完整每日流程)
+27. [Common errors / 常見錯誤](#27-common-errors--常見錯誤)
+28. [Quick command index / 快速指令索引](#28-quick-command-index--快速指令索引)
+29. [Command discovery / 自行查看指令](#29-command-discovery--自行查看指令)
+30. [Current feature boundary / 目前功能界線](#30-current-feature-boundary--目前功能界線)
+
 ---
 
 ## 1. Command notation / 指令符號
