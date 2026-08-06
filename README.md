@@ -6,338 +6,409 @@
 
 <p align="center">
 
-**Connect. Compare. Understand.**  
-**連結、比較、理解。**
+**Connect. Compare. Understand. Remember.**<br>
+**連結、比較、理解、記住。**
 
-*A structured knowledge database and learning toolkit for Python.*
+*A structured knowledge database, learning toolkit, and personal review system for Python.*
 
-**一套以結構化知識為核心的 Python 學習與查詢工具。**
+*一套以結構化知識為核心，結合學習工具與個人複習排程的 Python 套件。*
 
 </p>
 
 ---
 
-# 📖 About / 關於 KnowpareX
+## What is KnowpareX? / KnowpareX 是什麼？
 
-KnowpareX is a reusable Python package for structured knowledge management.
+KnowpareX is a reusable Python package for structured knowledge management and
+learning. It combines a searchable knowledge database, curriculum resources,
+relationship-based learning, command-line tools, practice and review features,
+and a personal Learning Memory system.
 
-It combines a searchable knowledge database, curriculum resources, relationship-based learning, and command-line tools into one package.
+KnowpareX 是一套可重複使用的 Python 結構化知識與學習管理套件。它整合了
+可搜尋知識庫、課程資源、關係式學習、命令列工具、練習與錯題複習，以及個人
+Learning Memory 學習記憶系統。
 
-Whether you're reviewing science, comparing programming languages, or building educational applications, KnowpareX provides a simple and consistent way to organize and query knowledge.
+KnowpareX can be used by:
 
-KnowpareX 是一套可重複使用的 Python 套件。
+- Students organizing and reviewing what they learn
+- Teachers preparing structured learning material
+- Python developers building educational applications
+- Anyone exploring relationships between concepts
 
-它整合了：
+KnowpareX 適合：
 
-- 📚 結構化知識資料庫
-- 🎓 MindLeapX 課程資料
-- 🔍 關鍵字搜尋
-- 🌳 關係式知識模型
-- 🖥 命令列工具（CLI）
-- 🐍 Python API
-- 🎯 練習、複習與比較工具
-
-無論是學生學習、教師開發教材，或是開發教育軟體，都可以快速整合 KnowpareX。
-
----
-# 📂 Example Applications / 範例程式
-
-Included examples:
-
-內建範例：
-
-- [Compare Tool](examples/TOOL.COMPARE.py)
-- [Practice Tool](examples/TOOL.PRACTICE.py)
-- [Review Tool](examples/TOOL.REVIEW.py)
-- [Learning Memory / 學習記憶](LEARNING_MEMORY.md)
+- 整理與複習學習內容的學生
+- 製作結構化教材的教師
+- 開發教育應用程式的 Python 開發者
+- 想探索不同概念之間關係的學習者
 
 ---
 
-# 📖 Documentation / 完整文件
+## ✨ What is new in 1.8.0? / 1.8.0 新功能
 
-Complete documentation:
+Version 1.8.0 introduces **Learning Memory**, a local system for recording
+project-based learning and scheduling spaced reviews.
 
-完整技術文件：
+1.8.0 新增 **Learning Memory（學習記憶）**，可以保存專案學習紀錄並安排間隔複習。
 
-[CHINESE--KNOWPAREX_API_GUIDE](KNOWPAREX_API_GUIDE.td-chi.md)<br>
-[ENGLISH--KNOWPAREX_API_GUIDE](KNOWPAREX_API_GUID.en-us.md)
+### Learning Memory can currently:
 
-Includes：
+- Add a project or learning record
+- Store a title, subject, summary, tags, and learning notes
+- Show everything that has been recorded
+- Show records due for review
+- Schedule the next review from a rating of 0–3
+- Import Markdown, text, and Python files
+- Skip files already imported from the same source path
+- Export a record as a readable Markdown learning page
+- Provide both command-line and Python interfaces
 
-包含：
+### Learning Memory 目前可以：
 
-- Python API
-- Command Line Guide
-- Relationship Functions
-- Data Structure
-- Registered Topics
-- Developer Guide
+- 新增專案或學習紀錄
+- 保存標題、科目、摘要、標籤及學習內容
+- 列出所有已保存紀錄
+- 顯示今天到期的複習項目
+- 根據 0～3 的評分安排下一次複習
+- 匯入 Markdown、純文字及 Python 檔案
+- 跳過已從相同來源路徑匯入的檔案
+- 把紀錄匯出成容易閱讀的 Markdown 教學頁面
+- 提供命令列與 Python API
 
-- Python API
-- CLI 指令
-- 關係函式
-- 資料結構
-- 全部主題
-- 開發者指南
+> Learning Memory is currently a record and review scheduler. It does not yet
+> use AI, automatically understand the meaning of a file, generate questions,
+> synchronize later file changes, or connect imported text to related KnowpareX
+> topics. These are possible future stages.
 
----
+> Learning Memory 目前是紀錄與複習排程器。它尚未使用 AI，也不會自動理解檔案、
+> 產生題目、同步後續檔案修改，或把匯入文字連接到相關 KnowpareX 主題。這些可以作為
+> 未來版本的發展方向。
 
-# 👨‍💻 Who is this for? / 適合誰？
-
-KnowpareX is designed for:
-
-適合：
-
-- 🎓 Students（學生）
-- 👨‍🏫 Teachers（教師）
-- 💻 Python Developers（Python 開發者）
-- 📚 Educational Projects（教育專案）
-- 🧠 Knowledge Management（知識管理）
-- 🤖 Learning Applications（學習應用）
-
----
-
-# ✨ Features / 功能特色
-
-## 📚 Knowledge Database / 知識資料庫
-
-- Structured knowledge database
-- Relationship-based knowledge model
-- High-school subject database
-- Programming language comparisons
-- Searchable topics
-- JSON output
-
-- 結構化知識資料庫
-- 關係式知識模型
-- 高中學科資料
-- 程式語言比較
-- 主題搜尋
-- JSON 輸出
+Read the complete guide: [Learning Memory / 學習記憶](LEARNING_MEMORY.md)
 
 ---
 
-## 🎓 Curriculum Database / 課程資料
+## 📦 Installation / 安裝
 
-- MindLeapX curriculum database
-- Subject browser
-- Book browser
-- Unit browser
-- Lesson viewer
+Install the published package from PyPI:
 
-- MindLeapX 課程資料
-- 科目瀏覽
-- 冊別瀏覽
-- 單元瀏覽
-- 教材閱讀
-
----
-
-## 🔍 Search / 搜尋
-
-- Keyword search
-- Concept scanner
-- Interactive search
-- Tree view
-- Summary mode
-- JSON export
-
-- 關鍵字搜尋
-- 文字概念掃描
-- 互動式搜尋
-- Tree 模式
-- Summary 模式
-- JSON 匯出
-
----
-
-## 🎯 Learning Tools / 學習工具
-
-- Practice mode
-- Review mode
-- Compare mode
-- Wrong-answer tracking
-
-- 練習模式
-- 複習模式
-- 比較模式
-- 錯題追蹤
-
----
-
-## 🐍 Python Library / Python 套件
-
-- Python API
-- Reusable modules
-- Structured data
-- Easy integration
-
-- Python API
-- 可重複使用模組
-- 結構化資料
-- 容易整合到自己的專案
-
----
-
-# 📊 Current Database / 目前資料庫
-
-Current version includes:
-
-目前版本包含：
-
-- **71 Categories**
-- **1678 Registered Topics**
-- **6871 Knowledge Relations**
-
-資料內容持續更新中。
-
----
-
-# 🚀 Installation / 安裝
-
-Install from PyPI:
-
-從 PyPI 安裝：
-
-```bash
-pip install knowparex
-```
-
-or
+從 PyPI 安裝正式版本：
 
 ```bash
 python3 -m pip install knowparex
 ```
 
-Development mode：
+Update an existing installation:
+
+更新現有版本：
 
 ```bash
+python3 -m pip install --upgrade knowparex
+```
+
+Install a local Git checkout in editable mode:
+
+以可編輯模式安裝本機 Git 專案：
+
+```bash
+git clone https://github.com/funlearnstudio/KnowpareX.git
+cd KnowpareX
 python3 -m pip install -e .
+```
+
+Check the installed version:
+
+```bash
+python3 -c "import knowparex; print(knowparex.__version__)"
 ```
 
 ---
 
-# ⚡ Quick Start / 快速開始
+## 🚀 Quick start / 快速開始
 
-Python
-
-```python
-from knowparex import get_topic_data
-
-data = get_topic_data("有機化學", "醇")
-
-print(data)
-```
-
-Command Line
+### Search the knowledge database / 搜尋知識庫
 
 ```bash
 knowparex search "歐姆定律"
 ```
 
+### Read one topic from Python / 使用 Python 讀取主題
+
+```python
+from knowparex import get_topic_data
+
+records = get_topic_data("電學", "歐姆定律")
+
+for record in records:
+    print(record)
+```
+
+### Browse curriculum data / 瀏覽課程資料
+
+```bash
+knowparex curriculum subjects
+knowparex curriculum books math --stage 高中
+```
+
 ---
 
-# 🖥 Command Line Tools / 命令列工具
+## 🧠 Learning Memory quick start / 學習記憶快速開始
 
-KnowpareX provides several built-in command-line tools.
+### 1. Add what you learned / 新增學習內容
 
-KnowpareX 內建多種命令列工具。
-
-### Knowledge / 知識庫
-
-```text
-categories
-items
-topic
+```bash
+knowparex learning add "Binary search project" \
+  --subject APCS \
+  --summary "I learned that binary search requires a monotonic condition." \
+  --tags algorithm,search
 ```
 
-### Search / 搜尋
+The command returns a short record ID. The ID can be used for later review and
+export commands.
 
-```text
-search
-scan
+指令會回傳一組簡短紀錄 ID，之後可用於複習與匯出。
+
+### 2. List saved records / 列出紀錄
+
+```bash
+knowparex learning list
 ```
 
-### Curriculum / 課程資料
+### 3. Check today's reviews / 查看今日複習
 
-```text
-curriculum subjects
-curriculum books
-curriculum units
-curriculum lesson
+```bash
+knowparex learning due
 ```
 
-### Learning / 學習工具
+Try to recall the idea before opening the original notes. Check the source only
+after making a real attempt.
+
+看到到期項目後，先不要打開原始筆記。請先從記憶回答，再查看資料。
+
+### 4. Save the review result / 保存複習結果
+
+```bash
+knowparex learning review RECORD_ID 2
+```
+
+| Rating | Meaning | Scheduling behavior |
+|---:|---|---|
+| `0` | Forgot | Reset to the first step |
+| `1` | Difficult | Stay at the current step |
+| `2` | Remembered | Advance one step |
+| `3` | Easy | Advance two steps |
+
+| 評分 | 意思 | 排程結果 |
+|---:|---|---|
+| `0` | 忘記 | 回到第一階段 |
+| `1` | 困難 | 保持目前階段 |
+| `2` | 想起來了 | 前進一個階段 |
+| `3` | 很簡單 | 前進兩個階段 |
+
+The current interval sequence is:
+
+目前的複習間隔為：
 
 ```text
-practice
+1 → 3 → 7 → 14 → 30 → 60 → 120 days
+```
+
+---
+
+## 📄 Import learning files / 匯入學習檔案
+
+Supported formats:
+
+支援格式：
+
+- `.md` — Markdown learning notes
+- `.txt` — plain-text explanations
+- `.py` — Python projects and examples
+
+Import one file:
+
+匯入一個檔案：
+
+```bash
+knowparex learning import "$HOME/Documents/APCS/binary-search.md" \
+  --subject APCS \
+  --tags algorithm,search
+```
+
+Import every supported file in a folder and its subfolders:
+
+匯入資料夾及子資料夾中的支援檔案：
+
+```bash
+knowparex learning import "$HOME/Documents/APCS" \
+  --recursive \
+  --subject APCS
+```
+
+When a file is imported, KnowpareX reads its text and stores a snapshot inside
+the Learning Memory database. Later edits to the original file are not currently
+synchronized automatically.
+
+匯入時，KnowpareX 會讀取文字並把當下內容保存成快照。原始檔案之後的修改目前不會
+自動同步。
+
+---
+
+## 🌐 Export learning pages / 匯出教學頁面
+
+Export one record as Markdown:
+
+把一筆紀錄匯出為 Markdown：
+
+```bash
+knowparex learning export RECORD_ID \
+  --output "$HOME/Desktop/KnowpareX Learning Pages"
+```
+
+The generated page contains the title, subject, tags, summary, review information,
+and learning notes. Review it before publishing because imported notes may contain
+private paths, names, secrets, or unfinished material.
+
+匯出頁面包含標題、科目、標籤、摘要、複習資訊及學習筆記。公開前請先檢查是否含有
+私人路徑、姓名、機密資料或尚未完成的內容。
+
+---
+
+## 🐍 Learning Memory Python API
+
+```python
+from knowparex import (
+    add_learning_record,
+    due_learning_records,
+    review_learning_record,
+)
+
+record = add_learning_record(
+    "My APCS project",
+    subject="APCS",
+    summary="I learned how to trace array indexes.",
+    tags=["array", "debugging"],
+)
+
+for due_record in due_learning_records():
+    print(due_record.title, due_record.next_review_on)
+
+review_learning_record(record.id, 2)
+```
+
+---
+
+## 💾 Where personal data is stored / 個人資料位置
+
+KnowpareX stores personal Learning Memory records in the normal per-user data
+directory. On macOS, the file is normally:
+
+KnowpareX 會把個人學習紀錄放在一般使用者資料目錄。macOS 通常位於：
+
+```text
+~/Library/Application Support/KnowpareX/learning_records.json
+```
+
+Open the directory in Finder:
+
+```bash
+open "$HOME/Library/Application Support/KnowpareX"
+```
+
+The file is not stored inside the installed Python package and is not uploaded
+automatically.
+
+這個檔案不會寫進已安裝的 Python 套件，也不會自動上傳。
+
+---
+
+## 🔧 Main command-line tools / 主要指令
+
+```text
+knowparex categories
+knowparex items CATEGORY
+knowparex topic CATEGORY ITEM
+knowparex search KEYWORD
+knowparex scan TEXT
+knowparex curriculum ...
+knowparex practice
+knowparex review
+knowparex learning ...
+```
+
+Learning Memory subcommands:
+
+```text
+add
+list
+due
 review
-compare
+import
+export
 ```
 
-Standalone launchers are also available.
+Show help at any time:
 
-另外也提供獨立啟動指令：
-
-```text
-knowparex-practice
-knowparex-review
-knowparex-compare
+```bash
+knowparex learning --help
 ```
 
 ---
 
-# 📚 Curriculum Database / 課程資料
+## 🧪 Development and testing / 開發與測試
 
-KnowpareX includes the MindLeapX curriculum database.
+Install the repository in editable mode:
 
-KnowpareX 內建 MindLeapX 課程資料。
+```bash
+python3 -m pip install -e .
+```
 
-Curriculum data is managed separately from the knowledge database.
+Run the Learning Memory tests:
 
-課程資料與一般知識資料分開管理。
+```bash
+python3 -m unittest discover -s tests -p "test_learning_memory.py" -v
+```
 
-You can browse：
+Run all discovered tests:
 
-可以瀏覽：
-
-- Subjects（科目）
-- Books（冊別）
-- Units（單元）
-- Lessons（教材）
-
-Search and Scan also support：
-
-搜尋與掃描同時支援：
-
-- Knowledge Database
-- Curriculum Database
-- Both Databases
-
-- 一般知識資料
-- 課程資料
-- 同時搜尋兩者
+```bash
+python3 -m unittest discover -s tests -v
+```
 
 ---
 
-# 📄 License / 授權
+## 🗺 Development roadmap / 開發路線
 
-- Python source code → MIT License
-- Original educational content → CC BY-NC-SA 4.0
-- Third-party content keeps its original license.
+Possible future stages include:
 
-- Python 程式碼採 MIT License
-- 原創教材內容採 CC BY-NC-SA 4.0
-- 第三方內容維持原授權
+未來可以發展：
+
+1. Scan imported files for existing KnowpareX concepts<br>
+   掃描匯入檔案並比對現有 KnowpareX 概念
+2. Store relationships between learning records and knowledge topics<br>
+   保存學習紀錄與知識主題之間的關係
+3. Synchronize changed source files<br>
+   同步已修改的來源檔案
+4. Generate review questions with an optional AI integration<br>
+   使用可選的 AI 整合產生複習問題
+5. Export a complete static learning website<br>
+   匯出完整的靜態學習網站
 
 ---
 
-# ❤️ Philosophy / 理念
+## 📚 Documentation / 文件
 
-> **Connect knowledge. Compare ideas. Build understanding.**
+- [Learning Memory / 學習記憶](LEARNING_MEMORY.md)
+- [Traditional Chinese API guide](KNOWPAREX_API_GUIDE.td-chi.md)
+- [English API guide](KNOWPAREX_API_GUID.en-us.md)
+- [Examples](examples/README.md)
 
-> **讓知識彼此連結，透過比較建立真正的理解。**
+---
 
-KnowpareX aims to make knowledge reusable, searchable, and easy to integrate into educational software.
+## 📜 License / 授權
 
-KnowpareX 致力於打造一套可重複使用、可搜尋、可整合的知識系統，讓知識不只是閱讀，而是真正能夠被理解、比較與應用。
+See [LICENSE-CODE](LICENSE-CODE) and [LICENSE-CONTENT](LICENSE-CONTENT) for the
+code and content licensing terms.
+
+程式碼與內容授權條款請參閱 [LICENSE-CODE](LICENSE-CODE) 及
+[LICENSE-CONTENT](LICENSE-CONTENT)。
