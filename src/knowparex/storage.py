@@ -26,6 +26,11 @@ def get_wrong_questions_path() -> Path:
     return get_data_directory() / "wrong_questions.json"
 
 
+def get_learning_records_path() -> Path:
+    """Return the persistent learning-memory JSON path."""
+    return get_data_directory() / "learning_records.json"
+
+
 def load_wrong_questions() -> list[dict[str, Any]]:
     """Load saved wrong questions, returning an empty list when unavailable."""
     path = get_wrong_questions_path()

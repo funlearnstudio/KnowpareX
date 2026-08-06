@@ -2088,6 +2088,12 @@ def review_main() -> None:
     main()
 
 
+def learning_main(args: argparse.Namespace) -> None:
+    from .tools.learning import run
+
+    run(args)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="knowparex",
@@ -2164,6 +2170,14 @@ def main() -> None:
         "review",
         help="複習已儲存的錯題",
     )
+
+    learning_parser = subparsers.add_parser(
+        "learning",
+        help="記錄專案學習、安排複習、匯入與分享筆記",
+    )
+    from .tools.learning import configure_parser as configure_learning_parser
+
+    configure_learning_parser(learning_parser)
 
     subparsers.add_parser(
         "categories",
@@ -2402,6 +2416,9 @@ def main() -> None:
 
         elif args.command == "review":
             review_main()
+
+        elif args.command == "learning":
+            learning_main(args)
 
         elif args.command == "categories":
             print("\n".join(get_categories()))

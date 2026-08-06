@@ -49,6 +49,7 @@ Included examples:
 - [Compare Tool](examples/TOOL.COMPARE.py)
 - [Practice Tool](examples/TOOL.PRACTICE.py)
 - [Review Tool](examples/TOOL.REVIEW.py)
+- [Learning Memory / 學習記憶](LEARNING_MEMORY.md)
 
 ---
 
