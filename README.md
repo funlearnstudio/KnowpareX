@@ -397,7 +397,7 @@ Possible future stages include:
 ---
 
 ## 📚 Documentation / 文件
-
+- [Quick Review Keywords / 快速回憶用法](KNOWPAREX_TERMINAL_GUIDE.md)
 - [Learning Memory / 學習記憶](LEARNING_MEMORY.md)
 - [Traditional Chinese API guide](KNOWPAREX_API_GUIDE.td-chi.md)
 - [English API guide](KNOWPAREX_API_GUID.en-us.md)
