@@ -16,6 +16,18 @@
 </p>
 
 ---
+## Official Website / 官方網站
+
+Explore KnowpareX through its bilingual web interface:
+
+透過中英雙語網頁介面探索 KnowpareX：
+
+**[Open the KnowpareX Official Website / 開啟 KnowpareX 官方網站](https://knowparex.vercel.app/)**
+
+The website provides knowledge search, topic relationships, curriculum exploration, concept comparison, active-recall practice, and spaced review—all without requiring an account.
+
+網站提供知識搜尋、主題關聯、課程探索、概念比較、主動回想與間隔複習，而且不需要註冊帳號。
+
 
 ## What is KnowpareX? / KnowpareX 是什麼？
 
